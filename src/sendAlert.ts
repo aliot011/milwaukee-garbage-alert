@@ -1,19 +1,12 @@
 // src/sendAlert.ts
-import fs from "fs";
-import path from "path";
 import dayjs from "dayjs";
 import dotenv from "dotenv";
 import axios from "axios";
+import { AddressParams, CityPickup, fetchCityResponse } from "./cityClient";
 
 dotenv.config();
 
-interface PickupDay {
-  date: string; // "YYYY-MM-DD"
-  garbage?: boolean;
-  recycling?: boolean;
-}
-
-// ---- Helper to safely read env vars ----
+// ---- env helper ----
 
 function getEnv(name: string): string {
   const value = process.env[name];
@@ -23,60 +16,109 @@ function getEnv(name: string): string {
   return value;
 }
 
-// ---- Load schedule ----
-
-const schedulePath = path.join(__dirname, "..", "schedule.json");
-const rawSchedule = fs.readFileSync(schedulePath, "utf8");
-const schedule: PickupDay[] = JSON.parse(rawSchedule);
-
-// ---- Zapier webhook ----
-
 const zapierWebhookUrl = getEnv("ZAPIER_WEBHOOK_URL");
 
-// ---- Logic ----
+// ---- date helpers ----
 
-function getTomorrowDate(): string {
-  // Uses the machine's local timezone (set it to Central / Milwaukee)
-  return dayjs().add(1, "day").format("YYYY-MM-DD");
+function parseCityDate(raw: string): dayjs.Dayjs | null {
+  if (!raw) return null;
+  // Remove leading weekday (e.g. "THURSDAY ")
+  const withoutWeekday = raw.replace(/^[A-Z]+\s+/, "").trim();
+  const jsDate = new Date(withoutWeekday);
+  if (Number.isNaN(jsDate.getTime())) {
+    console.warn("Could not parse city date:", raw);
+    return null;
+  }
+  return dayjs(jsDate);
+}
+
+function getActualPickupDate(info?: CityPickup): dayjs.Dayjs | null {
+  if (!info) return null;
+  const raw = info.alt_date && info.alt_date.trim() ? info.alt_date : info.date;
+  return parseCityDate(raw);
 }
 
 async function postToZapier(message: string): Promise<void> {
-  // axios works in Node 14/16/18, no ESM drama
   await axios.post(zapierWebhookUrl, { message });
 }
 
-export async function sendPickupAlert(): Promise<void> {
-  const tomorrow = getTomorrowDate();
+// ---- your address (for now) ----
 
-  const pickup = schedule.find((entry) => entry.date === tomorrow);
+const MY_ADDRESS: AddressParams = {
+  laddr: "2433",
+  sdir: "S",
+  sname: "superior",
+  stype: "ST",
+  faddr: "2433 S sUperIOR ST",
+};
 
-  if (!pickup) {
-    console.log(`No pickup scheduled for ${tomorrow}`);
+// ---- core logic ----
+
+export async function sendPickupAlertForAddress(
+  address: AddressParams
+): Promise<void> {
+  const tomorrow = dayjs().add(1, "day").startOf("day");
+
+  const data = await fetchCityResponse(address);
+
+  if (!data.success) {
+    console.error("City API returned success=false for address:", address);
+    return;
+  }
+
+  const garbageDetermined = data.garbage?.is_determined ?? false;
+  const recyclingDetermined = data.recycling?.is_determined ?? false;
+
+  // If neither side has a determined schedule, treat as "no address / no schedule found"
+  if (!garbageDetermined && !recyclingDetermined) {
+    console.error(
+      "City API could not determine a collection schedule for address:",
+      address
+    );
+    return;
+  }
+
+  const garbageDate = getActualPickupDate(data.garbage);
+  const recyclingDate = getActualPickupDate(data.recycling);
+
+  console.log("City API next pickups for address:", {
+    address,
+    garbage: data.garbage?.date,
+    garbage_alt: data.garbage?.alt_date,
+    garbage_is_determined: data.garbage?.is_determined,
+    recycling: data.recycling?.date,
+    recycling_alt: data.recycling?.alt_date,
+    recycling_is_determined: data.recycling?.is_determined,
+  });
+
+  const garbageTomorrow = garbageDate?.isSame(tomorrow, "day") ?? false;
+  const recyclingTomorrow = recyclingDate?.isSame(tomorrow, "day") ?? false;
+
+  if (!garbageTomorrow && !recyclingTomorrow) {
+    console.log("No pickup tomorrow for this address based on city API.");
     return;
   }
 
   const services: string[] = [];
-  if (pickup.garbage) services.push("garbage");
-  if (pickup.recycling) services.push("recycling");
+  if (garbageTomorrow) services.push("garbage");
+  if (recyclingTomorrow) services.push("recycling");
 
-  if (services.length === 0) {
-    console.log(`Entry found for ${tomorrow} but no services set.`);
-    return;
-  }
-
-  const niceDate = dayjs(tomorrow).format("dddd, MMM D");
-  const body = `Reminder: ${services.join(
+  const niceDate = tomorrow.format("dddd, MMMM D, YYYY");
+  const message = `Reminder: ${services.join(
     " & "
   )} pickup tomorrow (${niceDate}). Put carts out tonight.`;
 
-  console.log("Sending to Zapier:", body);
-
-  await postToZapier(body);
-
+  console.log("Sending to Zapier:", message);
+  await postToZapier(message);
   console.log("Sent to Zapier OK.");
 }
 
-// Allow running this file directly as a one-off
+// convenience wrapper for your scheduler / alert:now
+export async function sendPickupAlert(): Promise<void> {
+  return sendPickupAlertForAddress(MY_ADDRESS);
+}
+
+// allow `npm run alert:now`
 if (require.main === module) {
   sendPickupAlert().catch((err) => {
     console.error("Error sending pickup alert:", err);

@@ -3,15 +3,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.sendPickupAlertForAddress = sendPickupAlertForAddress;
 exports.sendPickupAlert = sendPickupAlert;
 // src/sendAlert.ts
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
 const dayjs_1 = __importDefault(require("dayjs"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const axios_1 = __importDefault(require("axios"));
+const cityClient_1 = require("./cityClient");
 dotenv_1.default.config();
-// ---- Helper to safely read env vars ----
+// ---- helpers ----
 function getEnv(name) {
     const value = process.env[name];
     if (!value) {
@@ -19,44 +19,83 @@ function getEnv(name) {
     }
     return value;
 }
-// ---- Load schedule ----
-const schedulePath = path_1.default.join(__dirname, "..", "schedule.json");
-const rawSchedule = fs_1.default.readFileSync(schedulePath, "utf8");
-const schedule = JSON.parse(rawSchedule);
-// ---- Zapier webhook ----
 const zapierWebhookUrl = getEnv("ZAPIER_WEBHOOK_URL");
-// ---- Logic ----
-function getTomorrowDate() {
-    // Uses the machine's local timezone (set it to Central / Milwaukee)
-    return (0, dayjs_1.default)().add(1, "day").format("YYYY-MM-DD");
+/**
+ * City returns "THURSDAY DECEMBER 4, 2025".
+ * Strip weekday and parse "DECEMBER 4, 2025".
+ */
+function parseCityDate(raw) {
+    if (!raw)
+        return null;
+    const withoutWeekday = raw.replace(/^[A-Z]+\s+/, "").trim();
+    const jsDate = new Date(withoutWeekday);
+    if (Number.isNaN(jsDate.getTime())) {
+        console.warn("Could not parse city date:", raw);
+        return null;
+    }
+    return (0, dayjs_1.default)(jsDate);
+}
+/**
+ * Use alt_date if present (holiday / alt pickup),
+ * otherwise use date.
+ */
+function getActualPickupDate(info) {
+    if (!info)
+        return null;
+    const raw = info.alt_date && info.alt_date.trim() ? info.alt_date : info.date;
+    return parseCityDate(raw);
 }
 async function postToZapier(message) {
-    // axios works in Node 14/16/18, no ESM drama
     await axios_1.default.post(zapierWebhookUrl, { message });
 }
-async function sendPickupAlert() {
-    const tomorrow = getTomorrowDate();
-    const pickup = schedule.find((entry) => entry.date === tomorrow);
-    if (!pickup) {
-        console.log(`No pickup scheduled for ${tomorrow}`);
+// ---- Your address config (for now) ----
+// Later, this can come from a DB row per user.
+const MY_ADDRESS = {
+    laddr: "1403",
+    sdir: "E",
+    sname: "POTTER",
+    stype: "AV",
+    faddr: "1403 E POTTER AV",
+};
+// ---- Core logic, generalized to any address ----
+async function sendPickupAlertForAddress(address) {
+    const tomorrow = (0, dayjs_1.default)().add(1, "day").startOf("day");
+    const data = await (0, cityClient_1.fetchCityResponse)(address);
+    if (!data.success) {
+        console.error("City API returned success=false");
+        return;
+    }
+    const garbageDate = getActualPickupDate(data.garbage);
+    const recyclingDate = getActualPickupDate(data.recycling);
+    console.log("City API next pickups for address:", {
+        address,
+        garbage: data.garbage?.date,
+        garbage_alt: data.garbage?.alt_date,
+        recycling: data.recycling?.date,
+        recycling_alt: data.recycling?.alt_date,
+    });
+    const garbageTomorrow = garbageDate?.isSame(tomorrow, "day") ?? false;
+    const recyclingTomorrow = recyclingDate?.isSame(tomorrow, "day") ?? false;
+    if (!garbageTomorrow && !recyclingTomorrow) {
+        console.log("No pickup tomorrow for this address based on city API.");
         return;
     }
     const services = [];
-    if (pickup.garbage)
+    if (garbageTomorrow)
         services.push("garbage");
-    if (pickup.recycling)
+    if (recyclingTomorrow)
         services.push("recycling");
-    if (services.length === 0) {
-        console.log(`Entry found for ${tomorrow} but no services set.`);
-        return;
-    }
-    const niceDate = (0, dayjs_1.default)(tomorrow).format("dddd, MMM D");
-    const body = `Reminder: ${services.join(" & ")} pickup tomorrow (${niceDate}). Put carts out tonight.`;
-    console.log("Sending to Zapier:", body);
-    await postToZapier(body);
+    const niceDate = tomorrow.format("dddd, MMMM D, YYYY");
+    const message = `Reminder: ${services.join(" & ")} pickup tomorrow (${niceDate}). Put carts out tonight.`;
+    console.log("Sending to Zapier:", message);
+    await postToZapier(message);
     console.log("Sent to Zapier OK.");
 }
-// Allow running this file directly as a one-off
+// Convenience wrapper for your personal scheduler
+async function sendPickupAlert() {
+    return sendPickupAlertForAddress(MY_ADDRESS);
+}
+// Allow running this as `npm run alert:now`
 if (require.main === module) {
     sendPickupAlert().catch((err) => {
         console.error("Error sending pickup alert:", err);

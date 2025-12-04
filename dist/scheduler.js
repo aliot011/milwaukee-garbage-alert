@@ -8,7 +8,7 @@ const node_cron_1 = __importDefault(require("node-cron"));
 const sendAlert_1 = require("./sendAlert");
 console.log("Garbage/Recycling reminder scheduler started.");
 // Runs every day at 8:00 PM (server's local time)
-node_cron_1.default.schedule("0 20 * * *", () => {
+node_cron_1.default.schedule("0 02 * * *", () => {
     console.log("Running scheduled pickup check at", new Date().toISOString());
     (0, sendAlert_1.sendPickupAlert)().catch((err) => {
         console.error("Error in scheduled pickup alert:", err);
