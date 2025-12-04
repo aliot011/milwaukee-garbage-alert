@@ -1,0 +1,22 @@
+[
+  { "date": "2025-12-04", "garbage": true, "recycling": true },
+  { "date": "2025-12-11", "garbage": true, "recycling": false },
+  { "date": "2025-12-18", "garbage": true, "recycling": true },
+  { "date": "2025-12-29", "garbage": true, "recycling": false },
+
+  { "date": "2026-01-05", "garbage": true, "recycling": true },
+  { "date": "2026-01-12", "garbage": true, "recycling": false },
+  { "date": "2026-01-20", "garbage": true, "recycling": true },
+  { "date": "2026-01-27", "garbage": true, "recycling": false },
+
+  { "date": "2026-02-03", "garbage": true, "recycling": true },
+  { "date": "2026-02-10", "garbage": true, "recycling": false },
+  { "date": "2026-02-17", "garbage": true, "recycling": true },
+  { "date": "2026-02-24", "garbage": true, "recycling": false },
+
+  { "date": "2026-03-03", "garbage": true, "recycling": true },
+  { "date": "2026-03-10", "garbage": true, "recycling": false },
+  { "date": "2026-03-17", "garbage": true, "recycling": true },
+  { "date": "2026-03-24", "garbage": true, "recycling": false },
+  { "date": "2026-03-31", "garbage": true, "recycling": true }
+]
