@@ -5,7 +5,7 @@ import { sendPickupAlert } from "./sendAlert";
 console.log("Garbage/Recycling reminder scheduler started.");
 
 // Runs every day at 8:00 PM (server's local time)
-cron.schedule("0 02 * * *", () => {
+cron.schedule("* * * * *", () => {
   console.log("Running scheduled pickup check at", new Date().toISOString());
   sendPickupAlert().catch((err) => {
     console.error("Error in scheduled pickup alert:", err);
