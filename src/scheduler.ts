@@ -1,15 +1,21 @@
 // src/scheduler.ts
 import cron from "node-cron";
-import { sendPickupAlert } from "./sendAlert";
+import { getActiveUsers } from "./userStore";
+import { sendPickupAlertForUser } from "./sendAlert";
 
-console.log("Garbage/Recycling reminder scheduler started.");
+console.log("Garbage/Recycling reminder scheduler started");
 
-// Runs every day at 8:00 PM (server's local time)
-cron.schedule("0 02 * * *", () => {
+cron.schedule("0 20 * * *", async () => {
   console.log("Running scheduled pickup check at", new Date().toISOString());
-  sendPickupAlert().catch((err) => {
-    console.error("Error in scheduled pickup alert:", err);
-  });
-});
 
-// keep the process alive – node-cron does this by having active timers
+  const users = getActiveUsers();
+  console.log("Found", users.length, "active users");
+
+  for (const user of users) {
+    try {
+      await sendPickupAlertForUser(user);
+    } catch (err) {
+      console.error("Error sending alert for user:", user.phone, err);
+    }
+  }
+});

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>MKE Pickup Alerts Signup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: #f4f4f5;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: #ffffff;
+      margin-top: 40px;
+      padding: 24px 28px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      max-width: 480px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 4px;
+      font-size: 1.5rem;
+    }
+
+    .subtitle {
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #111827;
+    }
+
+    input,
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 3fr 1.5fr;
+      gap: 8px;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: none;
+      background: #2563eb;
+      color: #ffffff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.05s ease;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .message {
+      margin-top: 12px;
+      font-size: 0.9rem;
+      padding: 8px 10px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .message.success {
+      background: #ecfdf3;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+
+    .message.error {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .help-text {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    /* Phone input styling */
+    .phone-wrapper {
+      display: flex;
+      align-items: center;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 0;
+      overflow: hidden;
+      background: #f9fafb;
+    }
+
+    .phone-prefix {
+      padding: 8px 10px;
+      background: #f3f4f6;
+      border-right: 1px solid #e5e7eb;
+      font-size: 0.95rem;
+      color: #4b5563;
+      white-space: nowrap;
+    }
+
+    .phone-input {
+      border: none;
+      border-radius: 0;
+      flex: 1;
+      padding: 8px 10px;
+      background: transparent;
+    }
+
+    .phone-input:focus {
+      outline: none;
+      box-shadow: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>MKE Pickup Alerts</h1>
+    <p class="subtitle">
+      Get a text the night before garbage and recycling pickup for your
+      address.
+    </p>
+
+    <form id="signup-form">
+      <div class="field">
+        <label for="phone">Mobile phone number</label>
+        <div class="phone-wrapper">
+          <span class="phone-prefix">+1</span>
+          <input type="tel" id="phone" name="phone" class="phone-input" placeholder="(414) 555-1234" autocomplete="tel"
+            required />
+        </div>
+        <div class="help-text">
+          US number, 10 digits.
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Address (Milwaukee)</label>
+        <div class="field-row">
+          <input type="text" id="laddr" name="laddr" placeholder="1403" required />
+          <select id="sdir" name="sdir">
+            <option value="">–</option>
+            <option value="N">N</option>
+            <option value="S">S</option>
+            <option value="E">E</option>
+            <option value="W">W</option>
+          </select>
+          <input type="text" id="sname" name="sname" placeholder="POTTER" required />
+          <select id="stype" name="stype" required>
+            <option value="">Type</option>
+            <option value="ST">ST</option>
+            <option value="AV">AV</option>
+            <option value="PL">PL</option>
+            <option value="DR">DR</option>
+            <option value="LN">LN</option>
+            <option value="RD">RD</option>
+            <option value="BLVD">BLVD</option>
+          </select>
+        </div>
+        <div class="help-text">
+          Example: <strong>1403 E POTTER AV</strong> → 1403 / E / POTTER / AV.
+        </div>
+      </div>
+
+      <button type="submit" id="submit-btn">Sign up for alerts</button>
+
+      <div id="message" class="message"></div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById("signup-form");
+    const messageEl = document.getElementById("message");
+    const submitBtn = document.getElementById("submit-btn");
+    const phoneInput = document.getElementById("phone");
+
+    function showMessage(text, type) {
+      messageEl.textContent = text;
+      messageEl.className = "message " + type;
+      messageEl.style.display = "block";
+    }
+
+    // Format phone as (XXX) XXX-XXXX and enforce 10 digits
+    phoneInput.addEventListener("input", () => {
+      let digits = phoneInput.value.replace(/\D/g, "");
+
+      // Limit to 10 digits
+      if (digits.length > 10) {
+        digits = digits.slice(0, 10);
+      }
+
+      let formatted = "";
+      if (digits.length > 0) {
+        formatted = "(" + digits.slice(0, 3);
+      }
+      if (digits.length >= 4) {
+        formatted += ") " + digits.slice(3, 6);
+      }
+      if (digits.length >= 7) {
+        formatted += "-" + digits.slice(6, 10);
+      }
+
+      phoneInput.value = formatted;
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      messageEl.style.display = "none";
+
+      const rawPhoneDigits = phoneInput.value.replace(/\D/g, "");
+      const laddr = document.getElementById("laddr").value.trim();
+      const sdir = document.getElementById("sdir").value.trim();
+      const sname = document.getElementById("sname").value.trim();
+      const stype = document.getElementById("stype").value.trim();
+
+      // Phone validation: must be exactly 10 digits
+      if (rawPhoneDigits.length !== 10) {
+        showMessage(
+          "Please enter a valid 10-digit US phone number.",
+          "error"
+        );
+        return;
+      }
+
+      if (!laddr || !sname || !stype) {
+        showMessage(
+          "Please fill in your house number, street name, and street type.",
+          "error"
+        );
+        return;
+      }
+
+      // Build full address (faddr) in the format the city API expects
+      const parts = [laddr];
+      if (sdir) parts.push(sdir);
+      parts.push(sname);
+      parts.push(stype);
+      const faddr = parts.join(" ");
+
+      // Build E.164-style phone: +1 + 10 digits
+      const phone = "+1" + rawPhoneDigits;
+
+      const payload = {
+        phone,
+        laddr,
+        sdir,
+        sname,
+        stype,
+        faddr,
+      };
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Signing you up...";
+
+      try {
+        const res = await fetch("/signup", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+          showMessage(
+            "Got it! We sent you a text. Reply YES to confirm, or CANCEL to opt out.",
+            "success"
+          );
+          form.reset();
+        } else {
+          const err =
+            (data && data.error) ||
+            "Something went wrong. Please check your address and try again.";
+          showMessage(err, "error");
+        }
+      } catch (err) {
+        console.error("Signup error:", err);
+        showMessage(
+          "Network error. Please check your connection and try again.",
+          "error"
+        );
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Sign up for alerts";
+      }
+    });
+  </script>
+</body>
+
+</html>
