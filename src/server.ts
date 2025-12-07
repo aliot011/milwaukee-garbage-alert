@@ -74,6 +74,9 @@ app.post("/signup", async (req, res) => {
       faddr,
     };
 
+    console.log("[/signup] incoming body:", req.body);
+    console.log("[/signup] address we are about to send:", address);
+
     // Validate address via city API
     const cityData = await fetchCityResponse(address);
     const garbageDetermined = cityData.garbage?.is_determined ?? false;
