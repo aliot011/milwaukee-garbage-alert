@@ -2,22 +2,22 @@
 import axios from "axios";
 
 export interface AddressParams {
-  laddr: string; // house number, e.g. "1403"
-  sdir: string; // street direction, e.g. "E"
-  sname: string; // street name, e.g. "POTTER"
-  stype: string; // street type, e.g. "AV"
-  faddr: string; // full address, e.g. "1403 E POTTER AV"
+  laddr: string;
+  sdir: string;
+  sname: string;
+  stype: string;
+  faddr: string;
 }
 
 export interface CityPickup {
   date: string;
-  alt_date: string;
-  is_determined: boolean;
-  is_guaranteed: boolean;
-  is_winter: boolean;
   route: string;
   apt_garbage_acct_num: string;
   year: number;
+  is_determined: boolean;
+  alt_date: string;
+  is_guaranteed: boolean;
+  is_winter: boolean;
 }
 
 export interface CityResponse {
@@ -26,41 +26,36 @@ export interface CityResponse {
   recycling?: CityPickup;
 }
 
-const BASE_URL =
-  "https://itmdapps.milwaukee.gov/DpwServletsPublicAll/garbageDayService";
-
-// 🔹 NEW: normalize everything to UPPERCASE (except laddr)
-function normalizeAddress(params: AddressParams): AddressParams {
-  return {
-    laddr: params.laddr.trim(), // keep as-is
-    sdir: params.sdir.trim().toUpperCase(), // "e" -> "E"
-    sname: params.sname.trim().toUpperCase(), // "Potter" -> "POTTER"
-    stype: params.stype.trim().toUpperCase(), // "av" -> "AV"
-    faddr: params.faddr.trim().toUpperCase(), // full address uppercased
-  };
-}
-
-function buildGarbageUrl(params: AddressParams): string {
-  const p = normalizeAddress(params);
-
-  const qs =
-    `redir=y&embed=y` +
-    `&laddr=${encodeURIComponent(p.laddr)}` +
-    `&sdir=${encodeURIComponent(p.sdir)}` +
-    `&sname=${encodeURIComponent(p.sname)}` +
-    `&stype=${encodeURIComponent(p.stype)}` +
-    `&faddr=${encodeURIComponent(p.faddr)}` +
-    `&method=na`;
-
-  return `${BASE_URL}?${qs}`;
-}
-
 export async function fetchCityResponse(
   address: AddressParams
 ): Promise<CityResponse> {
-  const url = buildGarbageUrl(address);
-  const response = await axios.get<CityResponse>(url, {
-    headers: { Accept: "application/json" },
+  const { laddr, sdir, sname, stype, faddr } = address;
+
+  const params = new URLSearchParams({
+    redir: "y",
+    embed: "y",
+    laddr: laddr.trim(),
+    sdir: (sdir || "").toUpperCase().trim(),
+    sname: sname.toUpperCase().trim(),
+    stype: stype.toUpperCase().trim(),
+    faddr: faddr.toUpperCase().trim(),
+    method: "na",
   });
-  return response.data;
+
+  const url =
+    "https://itmdapps.milwaukee.gov/DpwServletsPublicAll/garbageDayService?" +
+    params.toString();
+
+  console.log("[cityClient] calling URL:", url);
+
+  const res = await axios.get(url, { timeout: 5000 });
+
+  if (res.status !== 200) {
+    throw new Error(`City API returned status ${res.status}`);
+  }
+
+  // Log raw data so we can see what the city sends back
+  console.log("[cityClient] raw data:", res.data);
+
+  return res.data as CityResponse;
 }

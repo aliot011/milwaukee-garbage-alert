@@ -2,15 +2,13 @@
   "name": "milwaukee-garbage-alert",
   "version": "1.0.0",
   "main": "dist/scheduler.js",
-
   "scripts": {
     "build": "tsc",
-    "server": "ts-node src/server.ts",        
-    "scheduler": "ts-node src/scheduler.ts",  
+    "server": "ts-node src/server.ts",
+    "scheduler": "ts-node src/scheduler.ts",
     "start:web": "node dist/server.js",
     "start:worker": "node dist/scheduler.js"
   },
-
   "dependencies": {
     "axios": "^1.13.2",
     "dayjs": "^1.11.19",
