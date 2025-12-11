@@ -1,0 +1,308 @@
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+    background: #f4f4f5;
+    margin: 0;
+    padding: 0;
+}
+
+/* Sticky header at top */
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #111827;
+    color: #f9fafb;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.3);
+}
+
+.site-header__inner {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 18px 18px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+}
+
+.site-title {
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+/* Layout for info panel + signup card */
+.layout {
+    max-width: 960px;
+    margin: 24px auto 40px;
+    padding: 0 16px 40px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+@media (min-width: 840px) {
+    .layout {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .info-panel {
+        flex: 1.2;
+    }
+
+    .container {
+        flex: 1;
+        margin-top: 0;
+        /* Make signup box sticky on desktop */
+        position: sticky;
+        top: 88px;
+        /* leaves room for header */
+    }
+}
+
+/* Info panel styles - now a white block, no drop shadow */
+.info-panel {
+    background: #ffffff;
+    padding: 24px 24px 20px;
+    border-radius: 12px;
+    box-sizing: border-box;
+    border: 1px solid #e5e7eb;
+    /* subtle, no shadow */
+}
+
+.info-panel h1 {
+    margin: 0 0 6px;
+    font-size: 1.8rem;
+}
+
+.tagline {
+    margin: 0 0 14px;
+    color: #4b5563;
+    font-size: 0.95rem;
+}
+
+.info-panel h2 {
+    margin: 18px 0 6px;
+    font-size: 1.05rem;
+}
+
+.info-panel p {
+    margin: 4px 0 8px;
+    color: #374151;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.info-panel ul,
+.info-panel ol {
+    margin: 4px 0 8px 18px;
+    padding: 0;
+    font-size: 0.9rem;
+    color: #374151;
+}
+
+.info-panel li {
+    margin: 3px 0;
+}
+
+.pill {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: #e5e7eb;
+    color: #374151;
+    vertical-align: baseline;
+}
+
+.pill-yes {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.pill-status {
+    background: #e0f2fe;
+    color: #075985;
+}
+
+.pill-cancel {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.info-disclaimer {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 6px;
+}
+
+/* Signup box styles */
+.container {
+    background: #ffffff;
+    padding: 24px 28px;
+    border-radius: 12px;
+    /* box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); */
+        border: 1px solid #e5e7eb;
+    max-width: 480px;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 auto;
+}
+
+.container h1 {
+    margin-top: 0;
+    margin-bottom: 4px;
+    font-size: 1.5rem;
+}
+
+.subtitle {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: #111827;
+}
+
+input,
+select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus,
+select:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
+}
+
+.field-row {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 3fr 1.5fr;
+    gap: 8px;
+}
+
+.field {
+    margin-bottom: 14px;
+}
+
+button {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 999px;
+    border: none;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+}
+
+button:hover {
+    background: #1d4ed8;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #9ca3af;
+    /* softer gray */
+    box-shadow: none;
+}
+
+.message {
+    margin-top: 12px;
+    font-size: 0.9rem;
+    padding: 8px 10px;
+    border-radius: 8px;
+    display: none;
+}
+
+.message.success {
+    background: #ecfdf3;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.message.error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.help-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+/* Phone input styling */
+.phone-wrapper {
+    display: flex;
+    align-items: center;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0;
+    overflow: hidden;
+    background: #f9fafb;
+}
+
+.phone-prefix {
+    padding: 8px 10px;
+    background: #f3f4f6;
+    border-right: 1px solid #e5e7eb;
+    font-size: 0.95rem;
+    color: #4b5563;
+    white-space: nowrap;
+}
+
+.phone-input {
+    border: none;
+    border-radius: 0;
+    flex: 1;
+    padding: 8px 10px;
+    background: transparent;
+}
+
+.phone-input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* Footer (similar to Joe's Ideas) */
+.site-footer {
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.site-footer__inner {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 12px 16px 18px;
+    box-sizing: border-box;
+    font-size: 0.8rem;
+    color: #6b7280;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}

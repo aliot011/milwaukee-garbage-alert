@@ -5,13 +5,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 // src/scheduler.ts
 const node_cron_1 = __importDefault(require("node-cron"));
+const userStore_1 = require("./userStore");
 const sendAlert_1 = require("./sendAlert");
-console.log("Garbage/Recycling reminder scheduler started.");
-// Runs every day at 8:00 PM (server's local time)
-node_cron_1.default.schedule("0 02 * * *", () => {
+console.log("Garbage/Recycling reminder scheduler started");
+node_cron_1.default.schedule("0 20 * * *", async () => {
     console.log("Running scheduled pickup check at", new Date().toISOString());
-    (0, sendAlert_1.sendPickupAlert)().catch((err) => {
-        console.error("Error in scheduled pickup alert:", err);
-    });
+    const users = (0, userStore_1.getActiveUsers)();
+    console.log("Found", users.length, "active users");
+    for (const user of users) {
+        try {
+            await (0, sendAlert_1.sendPickupAlertForUser)(user);
+        }
+        catch (err) {
+            console.error("Error sending alert for user:", user.phone, err);
+        }
+    }
 });
-// keep the process alive – node-cron does this by having active timers

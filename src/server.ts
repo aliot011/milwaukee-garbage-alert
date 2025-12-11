@@ -1,7 +1,6 @@
 // src/server.ts
 import express from "express";
 import crypto from "crypto";
-import dayjs from "dayjs";
 import path from "path";
 
 import { AddressParams, fetchCityResponse, CityPickup } from "./cityClient";
@@ -9,14 +8,21 @@ import { User } from "./models";
 import { saveUser, findUserByPhone, updateUser } from "./userStore";
 import { sendSms } from "./smsService";
 
+import dayjs from "dayjs";
+
 const app = express();
 
 // Support JSON (from your frontend) and URL-encoded (from Twilio later)
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Serve static frontend from /public
-app.use(express.static(path.join(__dirname, "../public")));
+// Support JSON (from your frontend) and URL-encoded (from Twilio later)
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+// Serve static frontend files from /public
+const publicDir = path.join(__dirname, "../public");
+app.use(express.static(publicDir));
 
 // --- helpers ---
 
@@ -31,7 +37,7 @@ function parseCityDate(raw: string): dayjs.Dayjs | null {
   const withoutWeekday = raw.replace(/^[A-Z]+\s+/, "").trim();
   const jsDate = new Date(withoutWeekday);
   if (Number.isNaN(jsDate.getTime())) {
-    console.warn("[inbound] Could not parse city date:", raw);
+    console.warn("[city] Could not parse city date:", raw);
     return null;
   }
   return dayjs(jsDate);
@@ -41,6 +47,67 @@ function getActualPickupDate(info?: CityPickup): dayjs.Dayjs | null {
   if (!info) return null;
   const raw = info.alt_date && info.alt_date.trim() ? info.alt_date : info.date;
   return parseCityDate(raw);
+}
+
+/**
+ * Helper to build a status / “already signed up” message with next pickup dates.
+ *
+ * mode = "status"          → used when user texts STATUS / any non-CANCEL text
+ * mode = "alreadySignedUp" → used when user hits /signup again with same phone
+ */
+async function buildNextPickupMessage(
+  user: User,
+  mode: "status" | "alreadySignedUp" = "status"
+): Promise<string> {
+  const data = await fetchCityResponse(user.address);
+
+  const garbageDetermined = data.garbage?.is_determined ?? false;
+  const recyclingDetermined = data.recycling?.is_determined ?? false;
+  const upperAddr =
+    (user.address?.faddr && user.address.faddr.toUpperCase()) || "";
+
+  const prefixAlready = upperAddr
+    ? `You're already signed up for MKE pickup alerts for ${upperAddr}. `
+    : "You're already signed up for MKE pickup alerts. ";
+
+  const prefixStatus = upperAddr ? `For ${upperAddr}, ` : "";
+
+  const prefix = mode === "alreadySignedUp" ? prefixAlready : prefixStatus;
+
+  if (!data.success || (!garbageDetermined && !recyclingDetermined)) {
+    const tail =
+      "We couldn't determine upcoming pickup dates for your address right now. Reply CANCEL to stop alerts.";
+    return prefix ? `${prefix}${tail}` : tail;
+  }
+
+  const garbageDate = getActualPickupDate(data.garbage);
+  const recyclingDate = getActualPickupDate(data.recycling);
+
+  const parts: string[] = [];
+  if (garbageDate) {
+    parts.push(`garbage: ${garbageDate.format("dddd, MMMM D, YYYY")}`);
+  }
+  if (recyclingDate) {
+    parts.push(`recycling: ${recyclingDate.format("dddd, MMMM D, YYYY")}`);
+  }
+
+  if (parts.length === 0) {
+    const tail =
+      "We couldn't find upcoming pickup dates for your address right now. Reply CANCEL to stop alerts.";
+    return prefix ? `${prefix}${tail}` : tail;
+  }
+
+  const tail = `your next pickup dates are ${parts.join(
+    " and "
+  )}. Reply CANCEL at any time to stop alerts.`;
+
+  if (!prefix) {
+    return `Your next pickup dates are ${parts.join(
+      " and "
+    )}. Reply CANCEL at any time to stop alerts.`;
+  }
+
+  return `${prefix}${tail}`;
 }
 
 // --- routes ---
@@ -53,8 +120,12 @@ app.get("/health", (_req, res) => {
 /**
  * 1) SIGNUP:
  * User sends phone + address params (from frontend or gsheet backend).
- * We validate the address by calling the city API.
- * If it looks good, we create a pending user and send a "Reply YES / CANCEL" SMS.
+ * If the phone is already an active user, we:
+ *   - DO NOT create a new user
+ *   - send them a text saying they’re already signed up + next pickup dates + CANCEL reminder
+ * Otherwise:
+ *   - We validate the address by calling the city API.
+ *   - If it looks good, we create a pending user and send a "Reply YES / CANCEL" SMS.
  */
 app.post("/signup", async (req, res) => {
   try {
@@ -66,6 +137,46 @@ app.post("/signup", async (req, res) => {
 
     const normalizedPhone = normalizePhone(phone);
 
+    // If this phone is already an ACTIVE user, treat this as an idempotent call:
+    // don’t create a new record; text them their status + next dates instead.
+    const existingUser = findUserByPhone(normalizedPhone);
+
+    if (
+      existingUser &&
+      existingUser.status === "active" &&
+      existingUser.verified
+    ) {
+      console.log(
+        "[/signup] existing active user, sending already-signed-up status:",
+        {
+          phone: normalizedPhone,
+        }
+      );
+
+      try {
+        const msg = await buildNextPickupMessage(
+          existingUser,
+          "alreadySignedUp"
+        );
+        await sendSms(existingUser.phone, msg);
+      } catch (err) {
+        console.error(
+          "Error building/sending already-signed-up message for user:",
+          existingUser.phone,
+          err
+        );
+        // We still return 200 to the frontend so it doesn’t look like an error.
+      }
+
+      return res.status(200).json({
+        message:
+          "You're already signed up. We sent you a text with your next pickup dates and how to cancel.",
+        userId: existingUser.id,
+        alreadySignedUp: true,
+      });
+    }
+
+    // Otherwise, continue with normal signup flow
     const address: AddressParams = {
       laddr: String(laddr),
       sdir: sdir || "",
@@ -73,9 +184,6 @@ app.post("/signup", async (req, res) => {
       stype,
       faddr,
     };
-
-    console.log("[/signup] incoming body:", req.body);
-    console.log("[/signup] address we are about to send:", address);
 
     // Validate address via city API
     const cityData = await fetchCityResponse(address);
@@ -153,19 +261,14 @@ app.post("/sms/inbound", async (req, res) => {
     updateUser(user);
     console.log("User cancelled via SMS:", from);
 
-    // Send confirmation via your current SMS channel (Zapier)
-    await sendSms(
-      user.phone,
-      "You have been unsubscribed from MKE pickup alerts."
-    );
+    const msg = "You have been unsubscribed from MKE pickup alerts.";
+    await sendSms(user.phone, msg);
 
     // TwiML for future Twilio usage
     return res
       .status(200)
       .type("text/xml")
-      .send(
-        "<Response><Message>You have been unsubscribed from MKE pickup alerts.</Message></Response>"
-      );
+      .send(`<Response><Message>${msg}</Message></Response>`);
   }
 
   // --- YES/Y: opt-in / confirm ---
@@ -175,63 +278,20 @@ app.post("/sms/inbound", async (req, res) => {
     updateUser(user);
     console.log("User opted in via YES:", from);
 
-    await sendSms(
-      user.phone,
-      "Your MKE pickup alerts are now active. Reply CANCEL at any time to stop."
-    );
+    const msg =
+      "Your MKE pickup alerts are now active. Reply CANCEL at any time to stop.";
+    await sendSms(user.phone, msg);
 
     return res
       .status(200)
       .type("text/xml")
-      .send(
-        "<Response><Message>Your MKE pickup alerts are now active. Reply CANCEL at any time to stop.</Message></Response>"
-      );
+      .send(`<Response><Message>${msg}</Message></Response>`);
   }
 
   // --- Any other message from an ACTIVE user: send next pickup info ---
   if (user.status === "active" && user.verified) {
     try {
-      const data = await fetchCityResponse(user.address);
-
-      const garbageDetermined = data.garbage?.is_determined ?? false;
-      const recyclingDetermined = data.recycling?.is_determined ?? false;
-      const upperAddr = user.address.faddr.toUpperCase();
-
-      // If the city API can't determine schedule, tell them that (with address)
-      if (!data.success || (!garbageDetermined && !recyclingDetermined)) {
-        const msg =
-          `We couldn't determine upcoming pickup dates for ${upperAddr} right now. ` +
-          `Please double-check your address or try again later. Reply CANCEL to stop alerts.`;
-        await sendSms(user.phone, msg);
-
-        return res
-          .status(200)
-          .type("text/xml")
-          .send(`<Response><Message>${msg}</Message></Response>`);
-      }
-
-      const garbageDate = getActualPickupDate(data.garbage);
-      const recyclingDate = getActualPickupDate(data.recycling);
-
-      const parts: string[] = [];
-      if (garbageDate) {
-        parts.push(`garbage: ${garbageDate.format("dddd, MMMM D, YYYY")}`);
-      }
-      if (recyclingDate) {
-        parts.push(`recycling: ${recyclingDate.format("dddd, MMMM D, YYYY")}`);
-      }
-
-      let msg: string;
-      if (parts.length > 0) {
-        msg = `Your next pickup dates for ${upperAddr} are ${parts.join(
-          " and "
-        )}. Reply CANCEL at any time to stop alerts.`;
-      } else {
-        msg =
-          `We couldn't find upcoming pickup dates for ${upperAddr} right now. ` +
-          `Reply CANCEL to stop alerts.`;
-      }
-
+      const msg = await buildNextPickupMessage(user, "status");
       console.log("Sending next-pickup info to", user.phone, ":", msg);
       await sendSms(user.phone, msg);
 

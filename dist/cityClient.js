@@ -6,23 +6,26 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchCityResponse = fetchCityResponse;
 // src/cityClient.ts
 const axios_1 = __importDefault(require("axios"));
-// Base endpoint is the same for everyone
-const BASE_URL = "https://itmdapps.milwaukee.gov/DpwServletsPublicAll/garbageDayService";
-function buildGarbageUrl(params) {
-    const qs = `redir=y&embed=y` +
-        `&laddr=${encodeURIComponent(params.laddr)}` +
-        `&sdir=${encodeURIComponent(params.sdir)}` +
-        `&sname=${encodeURIComponent(params.sname)}` +
-        `&stype=${encodeURIComponent(params.stype)}` +
-        `&faddr=${encodeURIComponent(params.faddr)}` +
-        `&method=na`;
-    return `${BASE_URL}?${qs}`;
-}
-// Fetch raw JSON from city for a specific address
 async function fetchCityResponse(address) {
-    const url = buildGarbageUrl(address);
-    const response = await axios_1.default.get(url, {
-        headers: { Accept: "application/json" },
+    const { laddr, sdir, sname, stype, faddr } = address;
+    const params = new URLSearchParams({
+        redir: "y",
+        embed: "y",
+        laddr: laddr.trim(),
+        sdir: (sdir || "").toUpperCase().trim(),
+        sname: sname.toUpperCase().trim(),
+        stype: stype.toUpperCase().trim(),
+        faddr: faddr.toUpperCase().trim(),
+        method: "na",
     });
-    return response.data;
+    const url = "https://itmdapps.milwaukee.gov/DpwServletsPublicAll/garbageDayService?" +
+        params.toString();
+    console.log("[cityClient] calling URL:", url);
+    const res = await axios_1.default.get(url, { timeout: 5000 });
+    if (res.status !== 200) {
+        throw new Error(`City API returned status ${res.status}`);
+    }
+    // Log raw data so we can see what the city sends back
+    console.log("[cityClient] raw data:", res.data);
+    return res.data;
 }
