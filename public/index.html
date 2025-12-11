@@ -5,222 +5,160 @@
   <meta charset="UTF-8" />
   <title>MKE Pickup Alerts Signup</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-      background: #f4f4f5;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      min-height: 100vh;
-    }
-
-    .container {
-      background: #ffffff;
-      margin-top: 40px;
-      padding: 24px 28px;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
-      max-width: 480px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    h1 {
-      margin-top: 0;
-      margin-bottom: 4px;
-      font-size: 1.5rem;
-    }
-
-    .subtitle {
-      margin-top: 0;
-      margin-bottom: 20px;
-      color: #6b7280;
-      font-size: 0.9rem;
-    }
-
-    label {
-      display: block;
-      font-size: 0.9rem;
-      font-weight: 500;
-      margin-bottom: 4px;
-      color: #111827;
-    }
-
-    input,
-    select {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid #d1d5db;
-      font-size: 0.95rem;
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    input:focus,
-    select:focus {
-      border-color: #2563eb;
-      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
-    }
-
-    .field-row {
-      display: grid;
-      grid-template-columns: 1.5fr 1fr 3fr 1.5fr;
-      gap: 8px;
-    }
-
-    .field {
-      margin-bottom: 14px;
-    }
-
-    button {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 999px;
-      border: none;
-      background: #2563eb;
-      color: #ffffff;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s ease, transform 0.05s ease;
-    }
-
-    button:hover {
-      background: #1d4ed8;
-    }
-
-    button:active {
-      transform: scale(0.98);
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: default;
-    }
-
-    .message {
-      margin-top: 12px;
-      font-size: 0.9rem;
-      padding: 8px 10px;
-      border-radius: 8px;
-      display: none;
-    }
-
-    .message.success {
-      background: #ecfdf3;
-      color: #166534;
-      border: 1px solid #bbf7d0;
-    }
-
-    .message.error {
-      background: #fef2f2;
-      color: #991b1b;
-      border: 1px solid #fecaca;
-    }
-
-    .help-text {
-      font-size: 0.75rem;
-      color: #6b7280;
-      margin-top: 4px;
-    }
-
-    /* Phone input styling */
-    .phone-wrapper {
-      display: flex;
-      align-items: center;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      padding: 0;
-      overflow: hidden;
-      background: #f9fafb;
-    }
-
-    .phone-prefix {
-      padding: 8px 10px;
-      background: #f3f4f6;
-      border-right: 1px solid #e5e7eb;
-      font-size: 0.95rem;
-      color: #4b5563;
-      white-space: nowrap;
-    }
-
-    .phone-input {
-      border: none;
-      border-radius: 0;
-      flex: 1;
-      padding: 8px 10px;
-      background: transparent;
-    }
-
-    .phone-input:focus {
-      outline: none;
-      box-shadow: none;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
-  <div class="container">
-    <h1>MKE Pickup Alerts</h1>
-    <p class="subtitle">
-      Get a text the night before garbage and recycling pickup for your
-      address.
-    </p>
+  <!-- Sticky site header -->
+  <header class="site-header">
+    <div class="site-header__inner">
+      <div class="site-title">MKE Garbage Pickup Alerts</div>
+    </div>
+  </header>
 
-    <form id="signup-form">
-      <div class="field">
-        <label for="phone">Mobile phone number</label>
-        <div class="phone-wrapper">
-          <span class="phone-prefix">+1</span>
-          <input type="tel" id="phone" name="phone" class="phone-input" placeholder="(414) 555-1234" autocomplete="tel"
-            required />
-        </div>
-        <div class="help-text">
-          US number, 10 digits.
-        </div>
-      </div>
+  <div class="layout">
+    <!-- LEFT: TRUST / EXPLANATION -->
+    <section class="info-panel">
+      <h1>MKE Pickup Alerts</h1>
+      <p class="tagline">
+        Get a text the night before your City of Milwaukee garbage
+        and/or recycling pickup!
+      </p>
 
-      <div class="field">
-        <label>Address (Milwaukee)</label>
-        <div class="field-row">
-          <input type="text" id="laddr" name="laddr" placeholder="1403" required />
-          <select id="sdir" name="sdir">
-            <option value="">–</option>
-            <option value="N">N</option>
-            <option value="S">S</option>
-            <option value="E">E</option>
-            <option value="W">W</option>
-          </select>
-          <select id="sname" name="sname" placeholder="Street Name" required></select>
-          <select id="stype" name="stype" required></select>
-        </div>
-        <div class="help-text">
-          Example: <strong>1403 E POTTER AV</strong> → 1403 / E / POTTER / AV.
-        </div>
-      </div>
+      <h2>What this does</h2>
+      <p>
+        We look up the official City of Milwaukee collection schedule for your
+        address and:
+      </p>
+      <ul>
+        <li>Send a reminder text the night before garbage and/or recycling pickup.</li>
+        <li>Let you text <span class="pill pill-status">STATUS</span> any time to see your next pickup dates.</li>
+        <li>Let you stop messages instantly with <span class="pill pill-cancel">CANCEL</span>.</li>
+      </ul>
 
-      <button type="submit" id="submit-btn">Sign up for alerts</button>
+      <h2>How signup works</h2>
+      <ol>
+        <li>Enter your mobile number and Milwaukee address in the form on the right.</li>
+        <li>We validate your address against the city’s collection service.</li>
+        <li>You’ll get a text asking you to confirm – reply <span class="pill pill-yes">YES</span> to turn alerts on.
+        </li>
+      </ol>
+      <p class="info-disclaimer">
+        If the address can’t be matched to a valid collection schedule, we’ll tell you instead of signing you up.
+      </p>
 
-      <div id="message" class="message"></div>
-    </form>
+      <h2>Texts you can send</h2>
+      <ul>
+        <li>
+          <strong>Confirm alerts:</strong>
+          reply <span class="pill pill-yes">YES</span> (or <span class="pill pill-yes">Y</span>) to the first message.
+        </li>
+        <li>
+          <strong>Check your schedule:</strong>
+          after you’re active, send <span class="pill pill-status">STATUS</span> (or any message other than CANCEL)
+          to get your next pickup dates and a reminder of how to opt out.
+        </li>
+        <li>
+          <strong>Stop alerts:</strong>
+          send <span class="pill pill-cancel">CANCEL</span> at any time to unsubscribe. You’ll get a confirmation text
+          and no further reminders.
+        </li>
+      </ul>
+
+      <p class="info-disclaimer">
+        Your phone number is only used to send these pickup reminders and respond to your commands. You can opt out
+        whenever you like by texting CANCEL.
+      </p>
+    </section>
+
+    <!-- RIGHT: SIGNUP BOX -->
+    <div class="container">
+      <h1>Sign Up For Alerts</h1>
+      <p class="subtitle">
+        Input your information to sign up for alerts.
+      </p>
+
+      <form id="signup-form">
+        <div class="field">
+          <label for="phone">Mobile phone number</label>
+          <div class="phone-wrapper">
+            <span class="phone-prefix">+1</span>
+            <input type="tel" id="phone" name="phone" class="phone-input" placeholder="(414) 555-1234"
+              autocomplete="tel" required />
+          </div>
+          <div class="help-text">
+            US number, 10 digits.
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Address (Milwaukee)</label>
+          <div class="field-row">
+            <input type="text" id="laddr" name="laddr" placeholder="1403" required />
+            <select id="sdir" name="sdir">
+              <option value="">–</option>
+              <option value="N">N</option>
+              <option value="S">S</option>
+              <option value="E">E</option>
+              <option value="W">W</option>
+            </select>
+            <select id="sname" name="sname" placeholder="Street Name" required></select>
+            <select id="stype" name="stype" required></select>
+          </div>
+          <div class="help-text">
+            Example: <strong>1403 E POTTER AV</strong> → 1403 / E / POTTER / AV.
+          </div>
+        </div>
+
+        <button type="submit" id="submit-btn" disabled>Sign up for alerts</button>
+
+        <div id="message" class="message"></div>
+      </form>
+    </div>
   </div>
+
+  <!-- Simple footer (similar to Joe's Ideas, no GitHub link) -->
+  <footer class="site-footer">
+    <div class="site-footer__inner">
+      <span>© 2025 JHAI LLC · Built in Milwaukee.</span>
+    </div>
+  </footer>
 
   <script>
     const form = document.getElementById("signup-form");
     const messageEl = document.getElementById("message");
     const submitBtn = document.getElementById("submit-btn");
     const phoneInput = document.getElementById("phone");
+    const laddrInput = document.getElementById("laddr");
+    const sdirSelect = document.getElementById("sdir");
+    const snameSelect = document.getElementById("sname");
+    const stypeSelect = document.getElementById("stype");
 
     function showMessage(text, type) {
       messageEl.textContent = text;
       messageEl.className = "message " + type;
       messageEl.style.display = "block";
+    }
+
+    function getPhoneDigits() {
+      return phoneInput.value.replace(/\D/g, "");
+    }
+
+    function isPhoneValid() {
+      return getPhoneDigits().length === 10;
+    }
+
+    function areAddressFieldsValid() {
+      const laddr = laddrInput.value.trim();
+      const sname = snameSelect.value.trim();
+      const stype = stypeSelect.value.trim();
+      // sdir is optional
+      return !!laddr && !!sname && !!stype;
+    }
+
+    function updateButtonState() {
+      const isValid = isPhoneValid() && areAddressFieldsValid();
+      submitBtn.disabled = !isValid;
     }
 
     // Format phone as (XXX) XXX-XXXX and enforce 10 digits
@@ -244,24 +182,32 @@
       }
 
       phoneInput.value = formatted;
+      updateButtonState();
     });
+
+    // Revalidate when any address field changes
+    laddrInput.addEventListener("input", updateButtonState);
+    sdirSelect.addEventListener("change", updateButtonState);
+    snameSelect.addEventListener("change", updateButtonState);
+    stypeSelect.addEventListener("change", updateButtonState);
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       messageEl.style.display = "none";
 
-      const rawPhoneDigits = phoneInput.value.replace(/\D/g, "");
-      const laddr = document.getElementById("laddr").value.trim();
-      const sdir = document.getElementById("sdir").value.trim();
-      const sname = document.getElementById("sname").value.trim();
-      const stype = document.getElementById("stype").value.trim();
+      const rawPhoneDigits = getPhoneDigits();
+      const laddr = laddrInput.value.trim();
+      const sdir = sdirSelect.value.trim();
+      const sname = snameSelect.value.trim();
+      const stype = stypeSelect.value.trim();
 
-      // Phone validation: must be exactly 10 digits
+      // Double-check validation on submit (defensive)
       if (rawPhoneDigits.length !== 10) {
         showMessage(
           "Please enter a valid 10-digit US phone number.",
           "error"
         );
+        updateButtonState();
         return;
       }
 
@@ -270,6 +216,7 @@
           "Please fill in your house number, street name, and street type.",
           "error"
         );
+        updateButtonState();
         return;
       }
 
@@ -312,6 +259,8 @@
             "success"
           );
           form.reset();
+          // After reset, keep button disabled until user refills fields
+          updateButtonState();
         } else {
           const err =
             (data && data.error) ||
@@ -325,12 +274,18 @@
           "error"
         );
       } finally {
-        submitBtn.disabled = false;
         submitBtn.textContent = "Sign up for alerts";
+        // Re-sync disabled state with validation
+        updateButtonState();
       }
     });
+
+    // Initialize button state on load
+    updateButtonState();
   </script>
-    <script type="module" src="./main.js"></script>
+
+  <!-- populate sname/stype from your JS module -->
+  <script type="module" src="./main.js"></script>
 
 </body>
 
