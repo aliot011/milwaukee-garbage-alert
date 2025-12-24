@@ -200,6 +200,22 @@ select:focus {
     margin-bottom: 14px;
 }
 
+.consent-field {
+    margin-top: 6px;
+    margin-bottom: 18px;
+}
+
+.consent-label {
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: #374151;
+}
+
+.consent-label a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
 button {
     width: 100%;
     padding: 10px 12px;

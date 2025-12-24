@@ -26,9 +26,33 @@ app.use(express.static(publicDir));
 
 // --- helpers ---
 
-// Very naive phone normalization for now: strip non-digits
+const PROGRAM_NAME = "MKE Garbage Pickup Alerts";
+
+const STOP_KEYWORDS = new Set([
+  "STOP",
+  "STOPALL",
+  "UNSUBSCRIBE",
+  "CANCEL",
+  "END",
+  "QUIT",
+]);
+const HELP_KEYWORDS = new Set(["HELP", "INFO"]);
+const STATUS_KEYWORDS = new Set(["STATUS"]);
+const YES_KEYWORDS = new Set(["YES", "Y"]);
+
+// Normalize phone to E.164 where possible.
 function normalizePhone(phone: string): string {
-  return phone.replace(/\D/g, "");
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+${digits}`;
+  }
+  if (digits.length === 10) {
+    return `+1${digits}`;
+  }
+  if (phone.startsWith("+")) {
+    return phone;
+  }
+  return digits ? `+${digits}` : "";
 }
 
 function parseCityDate(raw: string): dayjs.Dayjs | null {
@@ -49,35 +73,17 @@ function getActualPickupDate(info?: CityPickup): dayjs.Dayjs | null {
   return parseCityDate(raw);
 }
 
-/**
- * Helper to build a status / “already signed up” message with next pickup dates.
- *
- * mode = "status"          → used when user texts STATUS / any non-CANCEL text
- * mode = "alreadySignedUp" → used when user hits /signup again with same phone
- */
-async function buildNextPickupMessage(
-  user: User,
-  mode: "status" | "alreadySignedUp" = "status"
-): Promise<string> {
-  const data = await fetchCityResponse(user.address);
+function formatAddress(address: AddressParams): string {
+  return address.faddr ? address.faddr.toUpperCase() : "your address";
+}
 
+async function buildNextPickupSummary(user: User): Promise<string | null> {
+  const data = await fetchCityResponse(user.address);
   const garbageDetermined = data.garbage?.is_determined ?? false;
   const recyclingDetermined = data.recycling?.is_determined ?? false;
-  const upperAddr =
-    (user.address?.faddr && user.address.faddr.toUpperCase()) || "";
-
-  const prefixAlready = upperAddr
-    ? `You're already signed up for MKE pickup alerts for ${upperAddr}. `
-    : "You're already signed up for MKE pickup alerts. ";
-
-  const prefixStatus = upperAddr ? `For ${upperAddr}, ` : "";
-
-  const prefix = mode === "alreadySignedUp" ? prefixAlready : prefixStatus;
 
   if (!data.success || (!garbageDetermined && !recyclingDetermined)) {
-    const tail =
-      "We couldn't determine upcoming pickup dates for your address right now. Reply CANCEL to stop alerts.";
-    return prefix ? `${prefix}${tail}` : tail;
+    return null;
   }
 
   const garbageDate = getActualPickupDate(data.garbage);
@@ -92,22 +98,58 @@ async function buildNextPickupMessage(
   }
 
   if (parts.length === 0) {
-    const tail =
-      "We couldn't find upcoming pickup dates for your address right now. Reply CANCEL to stop alerts.";
-    return prefix ? `${prefix}${tail}` : tail;
+    return null;
   }
 
-  const tail = `your next pickup dates are ${parts.join(
-    " and "
-  )}. Reply CANCEL at any time to stop alerts.`;
+  return parts.join(" and ");
+}
 
-  if (!prefix) {
-    return `Your next pickup dates are ${parts.join(
-      " and "
-    )}. Reply CANCEL at any time to stop alerts.`;
+/**
+ * Helper to build a status / “already subscribed” message with next pickup dates.
+ *
+ * mode = "status"           → used when user texts STATUS
+ * mode = "alreadySubscribed" → used when user hits /signup again with same phone
+ */
+async function buildNextPickupMessage(
+  user: User,
+  mode: "status" | "alreadySubscribed" = "status"
+): Promise<string> {
+  const address = formatAddress(user.address);
+  const nextPickups = await buildNextPickupSummary(user);
+
+  if (!nextPickups) {
+    return `${PROGRAM_NAME}: We couldn't determine upcoming pickup dates for ${address}. Reply STOP to unsubscribe, HELP for help.`;
   }
 
-  return `${prefix}${tail}`;
+  if (mode === "alreadySubscribed") {
+    return `${PROGRAM_NAME}: You're already subscribed for ${address}. Next: ${nextPickups}. Reply STOP to unsubscribe or STATUS for next dates.`;
+  }
+
+  return `${PROGRAM_NAME}: Next pickups for ${address}: ${nextPickups}. Reply STOP to unsubscribe, HELP for help.`;
+}
+
+function buildConfirmationMessage(address: string): string {
+  return `${PROGRAM_NAME}: Reply YES to confirm trash/recycling pickup texts for ${address}. Up to 4 msgs/month. Msg&data rates may apply. Reply STOP to unsubscribe, HELP for help.`;
+}
+
+function buildWelcomeMessage(address: string, nextPickups: string | null): string {
+  if (!nextPickups) {
+    return `${PROGRAM_NAME}: You're subscribed for ${address}. Up to 4 msgs/month. Msg&data rates may apply. Reply STATUS for next dates, STOP to unsubscribe, HELP for help.`;
+  }
+
+  return `${PROGRAM_NAME}: You're subscribed for ${address}. Next: ${nextPickups}. Up to 4 msgs/month. Msg&data rates may apply. Reply STATUS for next dates, STOP to unsubscribe, HELP for help.`;
+}
+
+function buildHelpMessage(): string {
+  return `${PROGRAM_NAME}: Trash/recycling pickup reminders & schedule updates (up to 4 msgs/month). Msg&data rates may apply. Reply STATUS for next dates. Reply STOP to unsubscribe. Support: jalioto@joesidea.com`;
+}
+
+function buildStopMessage(address: string): string {
+  return `${PROGRAM_NAME}: You're unsubscribed for ${address}. No more messages will be sent. Reply START to re-subscribe or email jalioto@joesidea.com.`;
+}
+
+function buildPendingReminder(address: string): string {
+  return `${PROGRAM_NAME}: Reply YES to confirm pickup texts for ${address}. Reply STOP to unsubscribe, HELP for help.`;
 }
 
 // --- routes ---
@@ -122,17 +164,32 @@ app.get("/health", (_req, res) => {
  * User sends phone + address params (from frontend or gsheet backend).
  * If the phone is already an active user, we:
  *   - DO NOT create a new user
- *   - send them a text saying they’re already signed up + next pickup dates + CANCEL reminder
+ *   - send them a text saying they’re already signed up + next pickup dates + STOP reminder
  * Otherwise:
  *   - We validate the address by calling the city API.
- *   - If it looks good, we create a pending user and send a "Reply YES / CANCEL" SMS.
+ *   - If it looks good, we create a pending user and send a "Reply YES / STOP" SMS.
  */
 app.post("/signup", async (req, res) => {
   try {
-    const { phone, laddr, sdir, sname, stype, faddr } = req.body;
+    const {
+      phone,
+      laddr,
+      sdir,
+      sname,
+      stype,
+      faddr,
+      sms_consent,
+      consent_source,
+    } = req.body;
 
     if (!phone || !laddr || !sname || !stype || !faddr) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (!sms_consent || !consent_source) {
+      return res.status(400).json({
+        error: "SMS consent and consent source are required.",
+      });
     }
 
     const normalizedPhone = normalizePhone(phone);
@@ -156,7 +213,7 @@ app.post("/signup", async (req, res) => {
       try {
         const msg = await buildNextPickupMessage(
           existingUser,
-          "alreadySignedUp"
+          "alreadySubscribed"
         );
         await sendSms(existingUser.phone, msg);
       } catch (err) {
@@ -170,7 +227,7 @@ app.post("/signup", async (req, res) => {
 
       return res.status(200).json({
         message:
-          "You're already signed up. We sent you a text with your next pickup dates and how to cancel.",
+          "You're already subscribed. We sent you a text with your next pickup dates.",
         userId: existingUser.id,
         alreadySignedUp: true,
       });
@@ -197,28 +254,48 @@ app.post("/signup", async (req, res) => {
       });
     }
 
-    const id = crypto.randomUUID();
-
-    const user: User = {
-      id,
-      phone: normalizedPhone,
-      address,
-      status: "pending", // waiting for YES
-      verified: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const now = new Date();
+    const user: User = existingUser
+      ? {
+          ...existingUser,
+          phone: normalizedPhone,
+          address,
+          status: "pending_confirm",
+          verified: false,
+          consent: {
+            consentChecked: true,
+            sourceUrl: String(consent_source),
+            submittedAt: now,
+            confirmedAt: null,
+          },
+          updatedAt: now,
+        }
+      : {
+          id: crypto.randomUUID(),
+          phone: normalizedPhone,
+          address,
+          status: "pending_confirm",
+          verified: false,
+          consent: {
+            consentChecked: true,
+            sourceUrl: String(consent_source),
+            submittedAt: now,
+            confirmedAt: null,
+          },
+          createdAt: now,
+          updatedAt: now,
+        };
 
     saveUser(user);
 
-    // Send opt-in SMS (YES to confirm, CANCEL to stop)
+    // Send opt-in SMS (YES to confirm, STOP to stop)
     const upperAddr = address.faddr.toUpperCase();
-    const message = `MKE Pickup Alerts: Reply YES to confirm alerts for ${upperAddr}. Reply CANCEL to stop.`;
+    const message = buildConfirmationMessage(upperAddr);
     await sendSms(user.phone, message);
 
     return res.status(200).json({
       message:
-        "Signup received. We sent you a text — reply YES to confirm, or CANCEL to opt out.",
+        "Signup received. We sent you a text — reply YES to confirm. Reply STOP to unsubscribe, HELP for help.",
       userId: user.id,
     });
   } catch (err) {
@@ -227,8 +304,8 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// 2) INBOUND SMS: YES/Y = opt-in, CANCEL = opt-out,
-// any other message from an active user = next pickup info.
+// 2) INBOUND SMS: YES/Y = opt-in, STOP = opt-out, HELP/INFO = help,
+// STATUS = next pickup info.
 app.post("/sms/inbound", async (req, res) => {
   const fromRaw = (req.body.From || "") as string;
   const bodyRaw = (req.body.Body || "") as string;
@@ -254,17 +331,46 @@ app.post("/sms/inbound", async (req, res) => {
     return res.status(200).type("text/xml").send("<Response></Response>");
   }
 
-  // --- CANCEL: unsubscribe ---
-  if (body === "CANCEL") {
-    user.status = "cancelled";
+  const address = formatAddress(user.address);
+
+  // --- STOP keywords: unsubscribe ---
+  if (STOP_KEYWORDS.has(body)) {
+    user.status = "unsubscribed";
     user.verified = false;
     updateUser(user);
-    console.log("User cancelled via SMS:", from);
+    console.log("User unsubscribed via SMS:", from);
 
-    const msg = "You have been unsubscribed from MKE pickup alerts.";
+    const msg = buildStopMessage(address);
     await sendSms(user.phone, msg);
 
-    // TwiML for future Twilio usage
+    return res
+      .status(200)
+      .type("text/xml")
+      .send(`<Response><Message>${msg}</Message></Response>`);
+  }
+
+  // --- HELP/INFO: help ---
+  if (HELP_KEYWORDS.has(body)) {
+    const msg = buildHelpMessage();
+    await sendSms(user.phone, msg);
+
+    return res
+      .status(200)
+      .type("text/xml")
+      .send(`<Response><Message>${msg}</Message></Response>`);
+  }
+
+  // --- START: re-subscribe flow ---
+  if (body === "START" && user.status === "unsubscribed") {
+    user.status = "pending_confirm";
+    user.verified = false;
+    user.consent.confirmedAt = null;
+    user.consent.submittedAt = new Date();
+    updateUser(user);
+
+    const msg = buildConfirmationMessage(address);
+    await sendSms(user.phone, msg);
+
     return res
       .status(200)
       .type("text/xml")
@@ -272,16 +378,68 @@ app.post("/sms/inbound", async (req, res) => {
   }
 
   // --- YES/Y: opt-in / confirm ---
-  if (body === "YES" || body === "Y") {
+  if (YES_KEYWORDS.has(body)) {
+    if (user.status !== "pending_confirm") {
+      const msg =
+        user.status === "active"
+          ? await buildNextPickupMessage(user, "status")
+          : buildConfirmationMessage(address);
+      await sendSms(user.phone, msg);
+      return res
+        .status(200)
+        .type("text/xml")
+        .send(`<Response><Message>${msg}</Message></Response>`);
+    }
+
     user.status = "active";
     user.verified = true;
+    user.consent.confirmedAt = new Date();
     updateUser(user);
     console.log("User opted in via YES:", from);
 
-    const msg =
-      "Your MKE pickup alerts are now active. Reply CANCEL at any time to stop.";
+    const nextPickups = await buildNextPickupSummary(user);
+    const msg = buildWelcomeMessage(address, nextPickups);
     await sendSms(user.phone, msg);
 
+    return res
+      .status(200)
+      .type("text/xml")
+      .send(`<Response><Message>${msg}</Message></Response>`);
+  }
+
+  // --- STATUS: send next pickup info ---
+  if (STATUS_KEYWORDS.has(body)) {
+    if (user.status === "active" && user.verified) {
+      try {
+        const msg = await buildNextPickupMessage(user, "status");
+        console.log("Sending next-pickup info to", user.phone, ":", msg);
+        await sendSms(user.phone, msg);
+
+        return res
+          .status(200)
+          .type("text/xml")
+          .send(`<Response><Message>${msg}</Message></Response>`);
+      } catch (err) {
+        console.error(
+          "Error fetching next pickup info for user:",
+          user.phone,
+          err
+        );
+        const msg = `${PROGRAM_NAME}: Sorry, we couldn't look up your pickup info right now. Please try again later. Reply STOP to unsubscribe, HELP for help.`;
+        await sendSms(user.phone, msg);
+
+        return res
+          .status(200)
+          .type("text/xml")
+          .send(`<Response><Message>${msg}</Message></Response>`);
+      }
+    }
+
+    const msg =
+      user.status === "pending_confirm"
+        ? buildPendingReminder(address)
+        : buildStopMessage(address);
+    await sendSms(user.phone, msg);
     return res
       .status(200)
       .type("text/xml")
@@ -292,9 +450,7 @@ app.post("/sms/inbound", async (req, res) => {
   if (user.status === "active" && user.verified) {
     try {
       const msg = await buildNextPickupMessage(user, "status");
-      console.log("Sending next-pickup info to", user.phone, ":", msg);
       await sendSms(user.phone, msg);
-
       return res
         .status(200)
         .type("text/xml")
@@ -305,10 +461,8 @@ app.post("/sms/inbound", async (req, res) => {
         user.phone,
         err
       );
-      const msg =
-        "Sorry, we couldn't look up your pickup info right now. Please try again later. Reply CANCEL to stop alerts.";
+      const msg = `${PROGRAM_NAME}: Sorry, we couldn't look up your pickup info right now. Please try again later. Reply STOP to unsubscribe, HELP for help.`;
       await sendSms(user.phone, msg);
-
       return res
         .status(200)
         .type("text/xml")
@@ -316,7 +470,16 @@ app.post("/sms/inbound", async (req, res) => {
     }
   }
 
-  // --- Any other message from non-active user: ignore for now ---
+  // --- Any other message from non-active user: send confirmation reminder ---
+  if (user.status === "pending_confirm") {
+    const msg = buildPendingReminder(address);
+    await sendSms(user.phone, msg);
+    return res
+      .status(200)
+      .type("text/xml")
+      .send(`<Response><Message>${msg}</Message></Response>`);
+  }
+
   return res.status(200).type("text/xml").send("<Response></Response>");
 });
 
