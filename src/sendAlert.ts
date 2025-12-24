@@ -50,12 +50,12 @@ export async function sendPickupAlertForUser(user: User): Promise<void> {
   if (garbageTomorrow) services.push("garbage");
   if (recyclingTomorrow) services.push("recycling");
 
-  const niceDate = tomorrow.format("dddd, MMMM D, YYYY");
+  const pickupDay = tomorrow.format("dddd, MMMM D, YYYY");
   const upperAddr = user.address.faddr.toUpperCase();
 
-  const message = `Reminder: ${services.join(
+  const message = `MKE Garbage Pickup Alerts: Reminder — ${services.join(
     " & "
-  )} pickup tomorrow (${niceDate}) for ${upperAddr}. Put carts out tonight. Reply CANCEL at any time to stop alerts.`;
+  )} pickup is ${pickupDay} for ${upperAddr}. Carts out by 7:00 AM. Reply STOP to unsubscribe, HELP for help.`;
 
   console.log("Sending SMS to", user.phone, ":", message);
   await sendSms(user.phone, message);
