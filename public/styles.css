@@ -307,6 +307,12 @@ button:disabled {
     box-sizing: border-box;
 }
 
+.site-footer__links {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
 .site-footer__text {
     white-space: nowrap;
 }
@@ -320,4 +326,40 @@ button:disabled {
 .site-footer__link:hover {
     color: #111827;
     text-decoration: underline;
+}
+
+.policy-layout {
+    max-width: 960px;
+    margin: 24px auto 48px;
+    padding: 0 16px;
+    box-sizing: border-box;
+}
+
+.policy-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.policy-card h1 {
+    margin-top: 0;
+    font-size: 1.8rem;
+}
+
+.policy-card h2 {
+    margin-top: 20px;
+    font-size: 1.1rem;
+}
+
+.policy-card p,
+.policy-card li {
+    color: #374151;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.policy-card ul {
+    padding-left: 20px;
 }
