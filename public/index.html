@@ -33,15 +33,16 @@
       <ul>
         <li>Send a reminder text the night before garbage and/or recycling pickup.</li>
         <li>Let you text <span class="pill pill-status">STATUS</span> any time to see your next pickup dates.</li>
-        <li>Let you stop messages instantly with <span class="pill pill-cancel">CANCEL</span>.</li>
+        <li>Let you stop messages instantly with <span class="pill pill-cancel">STOP</span>.</li>
+        <li>Let you request help with <span class="pill pill-status">HELP</span>.</li>
       </ul>
 
       <h2>How signup works</h2>
       <ol>
         <li>Enter your mobile number and Milwaukee address in the form on the right.</li>
+        <li>Check the consent box (Terms + Privacy included).</li>
         <li>We validate your address against the city’s collection service.</li>
-        <li>You’ll get a text asking you to confirm – reply <span class="pill pill-yes">YES</span> to turn alerts on.
-        </li>
+        <li>You’ll get a text asking you to confirm – reply <span class="pill pill-yes">YES</span> to turn alerts on.</li>
       </ol>
       <p class="info-disclaimer">
         If the address can’t be matched to a valid collection schedule, we’ll tell you instead of signing you up.
@@ -55,19 +56,24 @@
         </li>
         <li>
           <strong>Check your schedule:</strong>
-          after you’re active, send <span class="pill pill-status">STATUS</span> (or any message other than CANCEL)
-          to get your next pickup dates and a reminder of how to opt out.
+          send <span class="pill pill-status">STATUS</span> to get your next pickup dates.
+        </li>
+        <li>
+          <strong>Help:</strong>
+          send <span class="pill pill-status">HELP</span> for info and support.
         </li>
         <li>
           <strong>Stop alerts:</strong>
-          send <span class="pill pill-cancel">CANCEL</span> at any time to unsubscribe. You’ll get a confirmation text
-          and no further reminders.
+          send <span class="pill pill-cancel">STOP</span> at any time to unsubscribe.
         </li>
       </ul>
 
       <p class="info-disclaimer">
-        Your phone number is only used to send these pickup reminders and respond to your commands. You can opt out
-        whenever you like by texting CANCEL.
+        Your phone number is only used to send these pickup reminders and respond to your commands.
+        Up to 4 msgs/month. Msg&data rates may apply. Reply STOP to unsubscribe, HELP for help.
+      </p>
+      <p class="info-disclaimer">
+        No mobile information will be shared with third parties/affiliates for marketing/promotional purposes.
       </p>
     </section>
 
@@ -110,6 +116,24 @@
           </div>
         </div>
 
+        <!-- REQUIRED SMS CONSENT -->
+        <div class="field consent-field">
+          <label class="consent-label" for="sms-consent" style="display:flex; gap:10px; align-items:flex-start;">
+            <input type="checkbox" id="sms-consent" name="sms_consent" required style="margin-top:4px;" />
+            <span>
+              I agree to receive automated text messages from <strong>MKE Garbage Pickup Alerts</strong> about trash &
+              recycling pickup reminders and service updates for the address provided.
+              <strong>Up to 4 msgs/month.</strong> Msg&data rates may apply. Reply <strong>STOP</strong> to unsubscribe,
+              <strong>HELP</strong> for help.
+              View <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy Policy</a>.
+              <br />
+              <span style="font-size: 0.95em;">
+                No mobile information will be shared with third parties/affiliates for marketing/promotional purposes.
+              </span>
+            </span>
+          </label>
+        </div>
+
         <button type="submit" id="submit-btn" disabled>Sign up for alerts</button>
 
         <div id="message" class="message"></div>
@@ -117,7 +141,7 @@
     </div>
   </div>
 
-  <!-- Simple footer (similar to Joe's Ideas, no GitHub link) -->
+  <!-- Simple footer -->
   <footer class="site-footer">
     <div class="site-footer__inner">
       <span class="site-footer__text">
@@ -131,7 +155,6 @@
     </div>
   </footer>
 
-
   <script>
     const form = document.getElementById("signup-form");
     const messageEl = document.getElementById("message");
@@ -141,6 +164,7 @@
     const sdirSelect = document.getElementById("sdir");
     const snameSelect = document.getElementById("sname");
     const stypeSelect = document.getElementById("stype");
+    const consentCheckbox = document.getElementById("sms-consent");
 
     function showMessage(text, type) {
       messageEl.textContent = text;
@@ -164,8 +188,12 @@
       return !!laddr && !!sname && !!stype;
     }
 
+    function hasConsent() {
+      return !!consentCheckbox && consentCheckbox.checked;
+    }
+
     function updateButtonState() {
-      const isValid = isPhoneValid() && areAddressFieldsValid();
+      const isValid = isPhoneValid() && areAddressFieldsValid() && hasConsent();
       submitBtn.disabled = !isValid;
     }
 
@@ -173,21 +201,12 @@
     phoneInput.addEventListener("input", () => {
       let digits = phoneInput.value.replace(/\D/g, "");
 
-      // Limit to 10 digits
-      if (digits.length > 10) {
-        digits = digits.slice(0, 10);
-      }
+      if (digits.length > 10) digits = digits.slice(0, 10);
 
       let formatted = "";
-      if (digits.length > 0) {
-        formatted = "(" + digits.slice(0, 3);
-      }
-      if (digits.length >= 4) {
-        formatted += ") " + digits.slice(3, 6);
-      }
-      if (digits.length >= 7) {
-        formatted += "-" + digits.slice(6, 10);
-      }
+      if (digits.length > 0) formatted = "(" + digits.slice(0, 3);
+      if (digits.length >= 4) formatted += ") " + digits.slice(3, 6);
+      if (digits.length >= 7) formatted += "-" + digits.slice(6, 10);
 
       phoneInput.value = formatted;
       updateButtonState();
@@ -198,6 +217,7 @@
     sdirSelect.addEventListener("change", updateButtonState);
     snameSelect.addEventListener("change", updateButtonState);
     stypeSelect.addEventListener("change", updateButtonState);
+    consentCheckbox.addEventListener("change", updateButtonState);
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -209,33 +229,32 @@
       const sname = snameSelect.value.trim();
       const stype = stypeSelect.value.trim();
 
-      // Double-check validation on submit (defensive)
       if (rawPhoneDigits.length !== 10) {
-        showMessage(
-          "Please enter a valid 10-digit US phone number.",
-          "error"
-        );
+        showMessage("Please enter a valid 10-digit US phone number.", "error");
         updateButtonState();
         return;
       }
 
       if (!laddr || !sname || !stype) {
-        showMessage(
-          "Please fill in your house number, street name, and street type.",
-          "error"
-        );
+        showMessage("Please fill in your house number, street name, and street type.", "error");
         updateButtonState();
         return;
       }
 
-      // Build full address (faddr) in the format the city API expects
+      if (!hasConsent()) {
+        showMessage("Please check the consent box to continue.", "error");
+        updateButtonState();
+        return;
+      }
+
+      // Build full address (faddr)
       const parts = [laddr];
       if (sdir) parts.push(sdir);
       parts.push(sname);
       parts.push(stype);
       const faddr = parts.join(" ");
 
-      // Build E.164-style phone: +1 + 10 digits
+      // Build E.164-style phone
       const phone = "+1" + rawPhoneDigits;
 
       const payload = {
@@ -245,6 +264,8 @@
         sname,
         stype,
         faddr,
+        sms_consent: true,
+        consent_source: window.location.href,
       };
 
       submitBtn.disabled = true;
@@ -253,9 +274,7 @@
       try {
         const res = await fetch("/signup", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
 
@@ -263,32 +282,24 @@
 
         if (res.ok) {
           showMessage(
-            "Got it! We sent you a text. Reply YES to confirm, or CANCEL to opt out.",
+            "Got it! We sent you a text. Reply YES to confirm. Reply STOP to unsubscribe, HELP for help.",
             "success"
           );
           form.reset();
-          // After reset, keep button disabled until user refills fields
           updateButtonState();
         } else {
-          const err =
-            (data && data.error) ||
-            "Something went wrong. Please check your address and try again.";
+          const err = (data && data.error) || "Something went wrong. Please check your address and try again.";
           showMessage(err, "error");
         }
       } catch (err) {
         console.error("Signup error:", err);
-        showMessage(
-          "Network error. Please check your connection and try again.",
-          "error"
-        );
+        showMessage("Network error. Please check your connection and try again.", "error");
       } finally {
         submitBtn.textContent = "Sign up for alerts";
-        // Re-sync disabled state with validation
         updateButtonState();
       }
     });
 
-    // Initialize button state on load
     updateButtonState();
   </script>
 
