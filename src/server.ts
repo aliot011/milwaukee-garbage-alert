@@ -141,11 +141,11 @@ function buildWelcomeMessage(address: string, nextPickups: string | null): strin
 }
 
 function buildHelpMessage(): string {
-  return `${PROGRAM_NAME}: Trash/recycling pickup reminders & schedule updates (up to 4 msgs/month). Msg&data rates may apply. Reply STATUS for next dates. Reply STOP to unsubscribe. Support: jalioto@joesidea.com`;
+  return `${PROGRAM_NAME}: Trash/recycling pickup reminders & schedule updates (up to 4 msgs/month). Msg&data rates may apply. Reply STATUS for next dates. Reply STOP to unsubscribe. Support: support@milwaukeegarbagealert.com`;
 }
 
 function buildStopMessage(address: string): string {
-  return `${PROGRAM_NAME}: You're unsubscribed for ${address}. No more messages will be sent. Reply START to re-subscribe or email jalioto@joesidea.com.`;
+  return `${PROGRAM_NAME}: You're unsubscribed for ${address}. No more messages will be sent. Reply START to re-subscribe or email support@milwaukeegarbagealert.com.`;
 }
 
 function buildPendingReminder(address: string): string {
