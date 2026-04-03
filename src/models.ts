@@ -11,11 +11,30 @@ export interface ConsentLog {
 }
 
 export interface User {
-  id: string; // uuid, string id, whatever
-  phone: string; // E.164, e.g. "+14145551234"
-  address: AddressParams; // the params we already use
-  status: UserStatus; // "pending_confirm" until verified
-  verified: boolean; // true after code is confirmed
+  id: string;
+  phone: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  address: AddressParams;
+  status: UserStatus;
+  verified: boolean;
+  consent: ConsentLog;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Subscriber {
+  userId: string;
+  phone: string;
+  subscriptionId: string;
+  address: AddressParams;
+  status: UserStatus;
+  verified: boolean;
   consent: ConsentLog;
   createdAt: Date;
   updatedAt: Date;

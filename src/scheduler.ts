@@ -1,21 +1,20 @@
-// src/scheduler.ts
 import cron from "node-cron";
-import { getActiveUsers } from "./userStore";
-import { sendPickupAlertForUser } from "./sendAlert";
+import { getActiveSubscribers } from "./userStore";
+import { sendPickupAlertForSubscriber } from "./sendAlert";
 
 console.log("Garbage/Recycling reminder scheduler started");
 
 cron.schedule("0 20 * * *", async () => {
   console.log("Running scheduled pickup check at", new Date().toISOString());
 
-  const users = getActiveUsers();
-  console.log("Found", users.length, "active users");
+  const subscribers = await getActiveSubscribers();
+  console.log("Found", subscribers.length, "active subscribers");
 
-  for (const user of users) {
+  for (const subscriber of subscribers) {
     try {
-      await sendPickupAlertForUser(user);
+      await sendPickupAlertForSubscriber(subscriber);
     } catch (err) {
-      console.error("Error sending alert for user:", user.phone, err);
+      console.error("Error sending alert for subscriber:", subscriber.phone, err);
     }
   }
 });
