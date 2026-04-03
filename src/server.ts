@@ -74,6 +74,13 @@ function formatAddress(address: AddressParams): string {
   return address.faddr ? address.faddr.toUpperCase() : "your address";
 }
 
+function normalizeAddressParams(address: AddressParams): AddressParams {
+  return {
+    ...address,
+    sdir: address.sdir || "",
+  };
+}
+
 function toSubscription(subscriber: Subscriber): Subscription {
   return {
     id: subscriber.subscriptionId,
@@ -96,15 +103,12 @@ async function resolveRelevantSubscriptionByPhone(
     return null;
   }
 
-  const nonUnsubscribed = subscriptions.filter(
+  // subscriptions are ordered by updated_at DESC, so pick the first non-unsubscribed
+  // and only fall back to the newest overall if all are unsubscribed.
+  const mostRecentNonUnsubscribed = subscriptions.find(
     (subscription) => subscription.status !== "unsubscribed"
   );
-
-  if (nonUnsubscribed.length === 1) {
-    return nonUnsubscribed[0];
-  }
-
-  return subscriptions[0] ?? null;
+  return mostRecentNonUnsubscribed ?? subscriptions[0] ?? null;
 }
 
 async function buildNextPickupSummary(subscriber: Subscriber): Promise<string | null> {
@@ -205,13 +209,13 @@ app.post("/signup", async (req, res) => {
 
     const normalizedPhone = normalizePhone(phone);
 
-    const address: AddressParams = {
+    const address = normalizeAddressParams({
       laddr: String(laddr),
       sdir: sdir || "",
       sname,
       stype,
       faddr,
-    };
+    });
 
     const existingForAddress = await findSubscriptionByPhoneAndAddress(
       normalizedPhone,
@@ -369,19 +373,26 @@ app.post("/sms/inbound", async (req, res) => {
   }
 
   if (body === "START") {
-    await updateSubscription({
-      ...toSubscription(subscriber),
-      status: "pending_confirm",
-      verified: false,
-      consent: {
-        ...subscriber.consent,
-        submittedAt: new Date(),
-        confirmedAt: null,
-      },
-      updatedAt: new Date(),
-    });
+    if (subscriber.status === "unsubscribed") {
+      await updateSubscription({
+        ...toSubscription(subscriber),
+        status: "pending_confirm",
+        verified: false,
+        consent: {
+          ...subscriber.consent,
+          submittedAt: new Date(),
+          confirmedAt: null,
+        },
+        updatedAt: new Date(),
+      });
+    }
 
-    const msg = buildConfirmationMessage(address);
+    const msg =
+      subscriber.status === "active"
+        ? await buildNextPickupMessage(subscriber, "status")
+        : subscriber.status === "pending_confirm"
+        ? buildPendingReminder(address)
+        : buildConfirmationMessage(address);
     await sendSms(subscriber.phone, msg);
 
     return res
