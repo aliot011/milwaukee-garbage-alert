@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   laddr TEXT NOT NULL,
-  sdir TEXT,
+  sdir TEXT NOT NULL DEFAULT '',
   sname TEXT NOT NULL,
   stype TEXT NOT NULL,
   faddr TEXT NOT NULL,

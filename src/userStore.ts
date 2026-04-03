@@ -13,7 +13,7 @@ interface SubscriptionRow {
   id: string;
   user_id: string;
   laddr: string;
-  sdir: string | null;
+  sdir: string;
   sname: string;
   stype: string;
   faddr: string;
@@ -34,10 +34,17 @@ interface SubscriberRow extends SubscriptionRow {
 function mapAddress(row: SubscriptionRow): AddressParams {
   return {
     laddr: row.laddr,
-    sdir: row.sdir ?? "",
+    sdir: row.sdir,
     sname: row.sname,
     stype: row.stype,
     faddr: row.faddr,
+  };
+}
+
+function normalizeAddress(address: AddressParams): AddressParams {
+  return {
+    ...address,
+    sdir: address.sdir || "",
   };
 }
 
@@ -111,6 +118,7 @@ export async function createUser(user: User): Promise<User> {
 export async function createSubscription(
   subscription: Subscription
 ): Promise<Subscription> {
+  const normalizedAddress = normalizeAddress(subscription.address);
   const result = await pool.query<SubscriptionRow>(
     `INSERT INTO subscriptions (
       id, user_id, laddr, sdir, sname, stype, faddr,
@@ -127,11 +135,11 @@ export async function createSubscription(
     [
       subscription.id,
       subscription.userId,
-      subscription.address.laddr,
-      subscription.address.sdir || null,
-      subscription.address.sname,
-      subscription.address.stype,
-      subscription.address.faddr,
+      normalizedAddress.laddr,
+      normalizedAddress.sdir,
+      normalizedAddress.sname,
+      normalizedAddress.stype,
+      normalizedAddress.faddr,
       subscription.status,
       subscription.verified,
       subscription.consent.consentChecked,
@@ -149,6 +157,7 @@ export async function createSubscription(
 export async function upsertSubscriptionForSignup(
   subscription: Subscription
 ): Promise<Subscription> {
+  const normalizedAddress = normalizeAddress(subscription.address);
   const result = await pool.query<SubscriptionRow>(
     `INSERT INTO subscriptions (
       id, user_id, laddr, sdir, sname, stype, faddr,
@@ -174,11 +183,11 @@ export async function upsertSubscriptionForSignup(
     [
       subscription.id,
       subscription.userId,
-      subscription.address.laddr,
-      subscription.address.sdir || null,
-      subscription.address.sname,
-      subscription.address.stype,
-      subscription.address.faddr,
+      normalizedAddress.laddr,
+      normalizedAddress.sdir,
+      normalizedAddress.sname,
+      normalizedAddress.stype,
+      normalizedAddress.faddr,
       subscription.status,
       subscription.verified,
       subscription.consent.consentChecked,
@@ -246,13 +255,14 @@ export async function findSubscriptionByPhoneAndAddress(
   phone: string,
   address: AddressParams
 ): Promise<Subscriber | null> {
+  const normalizedAddress = normalizeAddress(address);
   const result = await pool.query<SubscriberRow>(
     `SELECT s.*, u.phone
      FROM subscriptions s
      JOIN users u ON u.id = s.user_id
      WHERE u.phone = $1
        AND s.laddr = $2
-       AND COALESCE(s.sdir, '') = COALESCE($3, '')
+       AND s.sdir = $3
        AND s.sname = $4
        AND s.stype = $5
        AND s.faddr = $6
@@ -260,11 +270,11 @@ export async function findSubscriptionByPhoneAndAddress(
      LIMIT 1`,
     [
       phone,
-      address.laddr,
-      address.sdir || "",
-      address.sname,
-      address.stype,
-      address.faddr,
+      normalizedAddress.laddr,
+      normalizedAddress.sdir,
+      normalizedAddress.sname,
+      normalizedAddress.stype,
+      normalizedAddress.faddr,
     ]
   );
 
