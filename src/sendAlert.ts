@@ -1,6 +1,5 @@
-// src/sendAlert.ts
 import dayjs from "dayjs";
-import { User } from "./models";
+import { Subscriber } from "./models";
 import { fetchCityResponse, CityPickup } from "./cityClient";
 import { sendSms } from "./smsService";
 
@@ -21,17 +20,19 @@ function getActualPickupDate(info?: CityPickup): dayjs.Dayjs | null {
   return parseCityDate(raw);
 }
 
-export async function sendPickupAlertForUser(user: User): Promise<void> {
-  if (user.status !== "active" || !user.verified) {
-    console.log("Skipping user (not active/verified):", user.phone);
+export async function sendPickupAlertForSubscriber(
+  subscriber: Subscriber
+): Promise<void> {
+  if (subscriber.status !== "active" || !subscriber.verified) {
+    console.log("Skipping subscriber (not active/verified):", subscriber.phone);
     return;
   }
 
   const tomorrow = dayjs().add(1, "day").startOf("day");
-  const data = await fetchCityResponse(user.address);
+  const data = await fetchCityResponse(subscriber.address);
 
   if (!data.success) {
-    console.error("City API success=false for user:", user.phone);
+    console.error("City API success=false for subscriber:", subscriber.phone);
     return;
   }
 
@@ -42,7 +43,7 @@ export async function sendPickupAlertForUser(user: User): Promise<void> {
   const recyclingTomorrow = recyclingDate?.isSame(tomorrow, "day") ?? false;
 
   if (!garbageTomorrow && !recyclingTomorrow) {
-    console.log("No pickup tomorrow for user:", user.phone);
+    console.log("No pickup tomorrow for subscriber:", subscriber.phone);
     return;
   }
 
@@ -51,12 +52,12 @@ export async function sendPickupAlertForUser(user: User): Promise<void> {
   if (recyclingTomorrow) services.push("recycling");
 
   const pickupDay = tomorrow.format("dddd, MMMM D, YYYY");
-  const upperAddr = user.address.faddr.toUpperCase();
+  const upperAddr = subscriber.address.faddr.toUpperCase();
 
   const message = `MKE Garbage Pickup Alerts: Reminder — ${services.join(
     " & "
   )} pickup is ${pickupDay} for ${upperAddr}. Carts out by 7:00 AM. Reply STOP to unsubscribe, HELP for help.`;
 
-  console.log("Sending SMS to", user.phone, ":", message);
-  await sendSms(user.phone, message);
+  console.log("Sending SMS to", subscriber.phone, ":", message);
+  await sendSms(subscriber.phone, message);
 }
