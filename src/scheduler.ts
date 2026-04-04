@@ -4,7 +4,7 @@ import { sendPickupAlertForSubscriber } from "./sendAlert";
 
 console.log("Garbage/Recycling reminder scheduler started");
 
-cron.schedule("0 20 * * *", async () => {
+cron.schedule("0 19 * * *", async () => {
   console.log("Running scheduled pickup check at", new Date().toISOString());
 
   const subscribers = await getActiveSubscribers();
@@ -17,4 +17,4 @@ cron.schedule("0 20 * * *", async () => {
       console.error("Error sending alert for subscriber:", subscriber.phone, err);
     }
   }
-});
+}, { timezone: "America/Chicago" });
