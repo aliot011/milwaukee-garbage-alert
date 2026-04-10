@@ -40,7 +40,6 @@
       <h2>How signup works</h2>
       <ol>
         <li>Enter your mobile number and Milwaukee address in the form on the right.</li>
-        <li>Check the consent box (Terms + Privacy included).</li>
         <li>We validate your address against the city’s collection service.</li>
         <li>You’ll get a text asking you to confirm – reply <span class="pill pill-yes">YES</span> to turn alerts on.</li>
       </ol>
@@ -116,22 +115,16 @@
           </div>
         </div>
 
-        <!-- REQUIRED SMS CONSENT -->
+        <!-- SMS CONSENT DISCLOSURE -->
         <div class="field consent-field">
-          <label class="consent-label" for="sms-consent" style="display:flex; gap:10px; align-items:flex-start;">
-            <input type="checkbox" id="sms-consent" name="sms_consent" required style="margin-top:4px;" />
-            <span>
-              I agree to receive automated text messages from <strong>MKE Garbage Pickup Alerts</strong> about trash &
-              recycling pickup reminders and service updates for the address provided.
-              <strong>Up to 4 msgs/month.</strong> Msg&data rates may apply. Reply <strong>STOP</strong> to unsubscribe,
-              <strong>HELP</strong> for help.
-              View <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy Policy</a>.
-              <br />
-              <span style="font-size: 0.95em;">
-                No mobile information will be shared with third parties/affiliates for marketing/promotional purposes.
-              </span>
-            </span>
-          </label>
+          <p class="consent-disclosure">
+            By submitting this form, you will receive a confirmation text from <strong>MKE Garbage Pickup Alerts</strong>.
+            Reply <strong>YES</strong> to that text to opt in to automated trash &amp; recycling pickup reminders and
+            service updates for the address provided. <strong>Up to 4 msgs/month.</strong> Msg&amp;data rates may apply.
+            Reply <strong>STOP</strong> to unsubscribe, <strong>HELP</strong> for help.
+            View <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy Policy</a>.
+            No mobile information will be shared with third parties/affiliates for marketing/promotional purposes.
+          </p>
         </div>
 
         <button type="submit" id="submit-btn" disabled>Sign up for alerts</button>
@@ -164,8 +157,6 @@
     const sdirSelect = document.getElementById("sdir");
     const snameSelect = document.getElementById("sname");
     const stypeSelect = document.getElementById("stype");
-    const consentCheckbox = document.getElementById("sms-consent");
-
     function showMessage(text, type) {
       messageEl.textContent = text;
       messageEl.className = "message " + type;
@@ -188,12 +179,8 @@
       return !!laddr && !!sname && !!stype;
     }
 
-    function hasConsent() {
-      return !!consentCheckbox && consentCheckbox.checked;
-    }
-
     function updateButtonState() {
-      const isValid = isPhoneValid() && areAddressFieldsValid() && hasConsent();
+      const isValid = isPhoneValid() && areAddressFieldsValid();
       submitBtn.disabled = !isValid;
     }
 
@@ -217,7 +204,6 @@
     sdirSelect.addEventListener("change", updateButtonState);
     snameSelect.addEventListener("change", updateButtonState);
     stypeSelect.addEventListener("change", updateButtonState);
-    consentCheckbox.addEventListener("change", updateButtonState);
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -237,12 +223,6 @@
 
       if (!laddr || !sname || !stype) {
         showMessage("Please fill in your house number, street name, and street type.", "error");
-        updateButtonState();
-        return;
-      }
-
-      if (!hasConsent()) {
-        showMessage("Please check the consent box to continue.", "error");
         updateButtonState();
         return;
       }

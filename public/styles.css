@@ -218,6 +218,18 @@ select:focus {
     text-decoration: underline;
 }
 
+.consent-disclosure {
+    font-size: 0.82rem;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.consent-disclosure a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
 button {
     width: 100%;
     padding: 10px 12px;

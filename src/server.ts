@@ -201,9 +201,9 @@ app.post("/signup", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    if (!sms_consent || !consent_source) {
+    if (!consent_source) {
       return res.status(400).json({
-        error: "SMS consent and consent source are required.",
+        error: "Consent source is required.",
       });
     }
 
