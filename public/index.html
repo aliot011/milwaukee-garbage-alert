@@ -85,7 +85,7 @@
 
       <form id="signup-form">
         <div class="field">
-          <label for="phone">Mobile phone number</label>
+          <label for="phone">Mobile phone number <span class="required">*</span></label>
           <div class="phone-wrapper">
             <span class="phone-prefix">+1</span>
             <input type="tel" id="phone" name="phone" class="phone-input" placeholder="(414) 555-1234"
@@ -97,7 +97,7 @@
         </div>
 
         <div class="field">
-          <label>Address (Milwaukee)</label>
+          <label>Address (Milwaukee) <span class="required">*</span></label>
           <div class="field-row">
             <input type="text" id="laddr" name="laddr" placeholder="1403" required />
             <select id="sdir" name="sdir">
@@ -117,22 +117,28 @@
 
         <!-- SMS CONSENT CHECKBOX (optional) -->
         <div class="field consent-field">
-          <label class="consent-label" for="sms-consent" style="display:flex; gap:10px; align-items:flex-start;">
-            <input type="checkbox" id="sms-consent" name="sms_consent" style="margin-top:4px; flex-shrink:0;" />
-            <span>
+          <label class="consent-label" for="sms-consent">
+            <input type="checkbox" id="sms-consent" name="sms_consent" class="consent-checkbox" />
+            <span class="consent-label-text">
               I agree to receive automated text messages from <strong>MKE Garbage Pickup Alerts</strong> about trash &amp;
               recycling pickup reminders and service updates for the address provided.
               <strong>Up to 4 msgs/month.</strong> Msg&amp;data rates may apply. Reply <strong>STOP</strong> to
               unsubscribe, <strong>HELP</strong> for help.
-              <br />
-              <span style="font-size:0.9em; color:#6b7280;">
+              <span class="consent-sub">
                 No mobile information will be shared with third parties/affiliates for marketing/promotional purposes.
               </span>
             </span>
           </label>
-          <p class="consent-terms-link">
-            View our <a href="terms.html">Terms of Service</a> and <a href="privacy.html">Privacy Policy</a>.
-          </p>
+        </div>
+
+        <!-- TERMS CHECKBOX (required) -->
+        <div class="field consent-field">
+          <label class="consent-label" for="terms-consent">
+            <input type="checkbox" id="terms-consent" name="terms_consent" class="consent-checkbox" />
+            <span class="consent-label-text">
+              I agree to the <a href="terms.html">Terms of Service</a> and <a href="privacy.html">Privacy Policy</a>. <span class="required">*</span>
+            </span>
+          </label>
         </div>
 
         <button type="submit" id="submit-btn" disabled>Sign up for alerts</button>
@@ -166,6 +172,7 @@
     const snameSelect = document.getElementById("sname");
     const stypeSelect = document.getElementById("stype");
     const consentCheckbox = document.getElementById("sms-consent");
+    const termsCheckbox = document.getElementById("terms-consent");
 
     function showMessage(text, type) {
       messageEl.textContent = text;
@@ -190,7 +197,7 @@
     }
 
     function updateButtonState() {
-      const isValid = isPhoneValid() && areAddressFieldsValid();
+      const isValid = isPhoneValid() && areAddressFieldsValid() && termsCheckbox.checked;
       submitBtn.disabled = !isValid;
     }
 
@@ -215,6 +222,7 @@
     snameSelect.addEventListener("change", updateButtonState);
     stypeSelect.addEventListener("change", updateButtonState);
     consentCheckbox.addEventListener("change", updateButtonState);
+    termsCheckbox.addEventListener("change", updateButtonState);
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -235,6 +243,11 @@
       if (!laddr || !sname || !stype) {
         showMessage("Please fill in your house number, street name, and street type.", "error");
         updateButtonState();
+        return;
+      }
+
+      if (!termsCheckbox.checked) {
+        showMessage("Please agree to the Terms of Service and Privacy Policy to continue.", "error");
         return;
       }
 

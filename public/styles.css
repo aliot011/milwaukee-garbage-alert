@@ -202,15 +202,45 @@ select:focus {
     margin-bottom: 14px;
 }
 
+.required {
+    color: #dc2626;
+    margin-left: 2px;
+}
+
 .consent-field {
     margin-top: 6px;
     margin-bottom: 18px;
 }
 
 .consent-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
     font-size: 0.85rem;
     font-weight: 400;
     color: #374151;
+    cursor: pointer;
+    width: 100%;
+}
+
+.consent-checkbox {
+    flex-shrink: 0;
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.consent-label-text {
+    display: block;
+    line-height: 1.5;
+}
+
+.consent-sub {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.82rem;
+    color: #6b7280;
 }
 
 .consent-label a {
