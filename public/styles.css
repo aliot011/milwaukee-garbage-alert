@@ -230,6 +230,17 @@ select:focus {
     text-decoration: underline;
 }
 
+.consent-terms-link {
+    font-size: 0.82rem;
+    color: #6b7280;
+    margin: 8px 0 0 0;
+}
+
+.consent-terms-link a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
 button {
     width: 100%;
     padding: 10px 12px;

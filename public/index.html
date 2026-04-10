@@ -115,15 +115,23 @@
           </div>
         </div>
 
-        <!-- SMS CONSENT DISCLOSURE -->
+        <!-- SMS CONSENT CHECKBOX (optional) -->
         <div class="field consent-field">
-          <p class="consent-disclosure">
-            By submitting this form, you will receive a confirmation text from <strong>MKE Garbage Pickup Alerts</strong>.
-            Reply <strong>YES</strong> to that text to opt in to automated trash &amp; recycling pickup reminders and
-            service updates for the address provided. <strong>Up to 4 msgs/month.</strong> Msg&amp;data rates may apply.
-            Reply <strong>STOP</strong> to unsubscribe, <strong>HELP</strong> for help.
-            View <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy Policy</a>.
-            No mobile information will be shared with third parties/affiliates for marketing/promotional purposes.
+          <label class="consent-label" for="sms-consent" style="display:flex; gap:10px; align-items:flex-start;">
+            <input type="checkbox" id="sms-consent" name="sms_consent" style="margin-top:4px; flex-shrink:0;" />
+            <span>
+              I agree to receive automated text messages from <strong>MKE Garbage Pickup Alerts</strong> about trash &amp;
+              recycling pickup reminders and service updates for the address provided.
+              <strong>Up to 4 msgs/month.</strong> Msg&amp;data rates may apply. Reply <strong>STOP</strong> to
+              unsubscribe, <strong>HELP</strong> for help.
+              <br />
+              <span style="font-size:0.9em; color:#6b7280;">
+                No mobile information will be shared with third parties/affiliates for marketing/promotional purposes.
+              </span>
+            </span>
+          </label>
+          <p class="consent-terms-link">
+            View our <a href="terms.html">Terms of Service</a> and <a href="privacy.html">Privacy Policy</a>.
           </p>
         </div>
 
@@ -157,6 +165,8 @@
     const sdirSelect = document.getElementById("sdir");
     const snameSelect = document.getElementById("sname");
     const stypeSelect = document.getElementById("stype");
+    const consentCheckbox = document.getElementById("sms-consent");
+
     function showMessage(text, type) {
       messageEl.textContent = text;
       messageEl.className = "message " + type;
@@ -204,6 +214,7 @@
     sdirSelect.addEventListener("change", updateButtonState);
     snameSelect.addEventListener("change", updateButtonState);
     stypeSelect.addEventListener("change", updateButtonState);
+    consentCheckbox.addEventListener("change", updateButtonState);
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -224,6 +235,11 @@
       if (!laddr || !sname || !stype) {
         showMessage("Please fill in your house number, street name, and street type.", "error");
         updateButtonState();
+        return;
+      }
+
+      if (!consentCheckbox.checked) {
+        showMessage("Please check the consent box to receive pickup alerts via text.", "error");
         return;
       }
 
