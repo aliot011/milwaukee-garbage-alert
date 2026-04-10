@@ -207,6 +207,12 @@ select:focus {
     margin-left: 2px;
 }
 
+.required-note {
+    font-size: 0.82rem;
+    color: #6b7280;
+    margin: 0 0 16px 0;
+}
+
 .consent-field {
     margin-top: 6px;
     margin-bottom: 18px;
