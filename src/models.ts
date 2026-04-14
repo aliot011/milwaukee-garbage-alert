@@ -24,6 +24,8 @@ export interface Subscription {
   status: UserStatus;
   verified: boolean;
   consent: ConsentLog;
+  notifyHour: number;
+  awaitingTimePref: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +38,8 @@ export interface Subscriber {
   status: UserStatus;
   verified: boolean;
   consent: ConsentLog;
+  notifyHour: number;
+  awaitingTimePref: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

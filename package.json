@@ -4,6 +4,8 @@
   "main": "dist/scheduler.js",
   "scripts": {
     "build": "tsc",
+    "build:client": "cd client && npm run build",
+    "dev:client": "cd client && npm run dev",
     "server": "ts-node src/server.ts",
     "scheduler": "ts-node src/scheduler.ts",
     "start:web": "node dist/server.js",
@@ -11,19 +13,19 @@
   },
   "dependencies": {
     "axios": "^1.13.2",
-    "dayjs": "^1.11.19",
+    "dayjs": "^1.11.20",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "node-cron": "^3.0.3",
-    "twilio": "^5.0.0",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "twilio": "^5.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^22.19.1",
     "@types/node-cron": "^3.0.11",
+    "@types/pg": "^8.15.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3",
-    "@types/pg": "^8.15.6"
+    "typescript": "^5.9.3"
   }
 }

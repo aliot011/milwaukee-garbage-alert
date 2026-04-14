@@ -15,6 +15,7 @@ import {
   upsertSubscriptionForSignup,
 } from "./userStore";
 import { sendSms } from "./smsService";
+import { parseTimeToHour, formatHour } from "./parseTime";
 
 import dayjs from "dayjs";
 
@@ -90,6 +91,8 @@ function toSubscription(subscriber: Subscriber): Subscription {
     status: subscriber.status,
     verified: subscriber.verified,
     consent: subscriber.consent,
+    notifyHour: subscriber.notifyHour,
+    awaitingTimePref: subscriber.awaitingTimePref,
     createdAt: subscriber.createdAt,
     updatedAt: subscriber.updatedAt,
   };
@@ -281,18 +284,22 @@ app.post("/signup", async (req, res) => {
       });
     }
 
+    const autoOptIn = sms_consent === true;
+
     const subscription: Subscription = {
       id: existingForAddress?.subscriptionId ?? crypto.randomUUID(),
       userId: user.id,
       address,
-      status: "pending_confirm",
-      verified: false,
+      status: autoOptIn ? "active" : "pending_confirm",
+      verified: autoOptIn,
       consent: {
         consentChecked: true,
         sourceUrl: String(consent_source),
         submittedAt: now,
-        confirmedAt: null,
+        confirmedAt: autoOptIn ? now : null,
       },
+      notifyHour: existingForAddress?.notifyHour ?? 19,
+      awaitingTimePref: false,
       createdAt: existingForAddress?.createdAt ?? now,
       updatedAt: now,
     };
@@ -304,6 +311,19 @@ app.post("/signup", async (req, res) => {
     }
 
     const upperAddr = address.faddr.toUpperCase();
+
+    if (autoOptIn) {
+      const subscriber = await findSubscriptionByPhoneAndAddress(normalizedPhone, address);
+      const nextPickups = subscriber ? await buildNextPickupSummary(subscriber) : null;
+      const message = buildWelcomeMessage(upperAddr, nextPickups);
+      await sendSms(user.phone, message);
+
+      return res.status(200).json({
+        message: "You're signed up for pickup alerts.",
+        userId: user.id,
+      });
+    }
+
     const message = buildConfirmationMessage(upperAddr);
     await sendSms(user.phone, message);
 
@@ -344,6 +364,23 @@ app.post("/sms/inbound", async (req, res) => {
   }
 
   const address = formatAddress(subscriber.address);
+
+  // Time preference reply
+  if (subscriber.awaitingTimePref && !STOP_KEYWORDS.has(body) && !HELP_KEYWORDS.has(body)) {
+    const hour = parseTimeToHour(body);
+    if (hour !== null) {
+      await updateSubscription({
+        ...toSubscription(subscriber),
+        notifyHour: hour,
+        awaitingTimePref: false,
+        updatedAt: new Date(),
+      });
+      const msg = `${PROGRAM_NAME}: Got it! You'll receive your reminders at ${formatHour(hour)} CT. Reply STOP to unsubscribe, HELP for help.`;
+      await sendSms(subscriber.phone, msg);
+      return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
+    }
+    // Unparseable reply — let it fall through to normal keyword handling
+  }
 
   if (STOP_KEYWORDS.has(body)) {
     const updated = await updateSubscription({
@@ -423,6 +460,7 @@ app.post("/sms/inbound", async (req, res) => {
         ...subscriber.consent,
         confirmedAt: new Date(),
       },
+      awaitingTimePref: true,
       updatedAt: new Date(),
     });
     console.log("User opted in via YES:", from);
@@ -431,13 +469,16 @@ app.post("/sms/inbound", async (req, res) => {
     const confirmedSubscriber = refreshed ?? subscriber;
 
     const nextPickups = await buildNextPickupSummary(confirmedSubscriber);
-    const msg = buildWelcomeMessage(address, nextPickups);
-    await sendSms(confirmedSubscriber.phone, msg);
+    const welcomeMsg = buildWelcomeMessage(address, nextPickups);
+    await sendSms(confirmedSubscriber.phone, welcomeMsg);
+
+    const timePrompt = `${PROGRAM_NAME}: What time would you like your reminders? Reply with a time like 6PM or 8PM. Default is 7PM if you don't reply.`;
+    await sendSms(confirmedSubscriber.phone, timePrompt);
 
     return res
       .status(200)
       .type("text/xml")
-      .send(`<Response><Message>${msg}</Message></Response>`);
+      .send(`<Response><Message>${welcomeMsg}</Message></Response>`);
   }
 
   if (STATUS_KEYWORDS.has(body)) {
@@ -511,6 +552,11 @@ app.post("/sms/inbound", async (req, res) => {
   }
 
   return res.status(200).type("text/xml").send("<Response></Response>");
+});
+
+// SPA fallback — serve index.html for all non-API routes
+app.use((_req, res) => {
+  res.sendFile(path.join(publicDir, "index.html"));
 });
 
 const PORT = process.env.PORT || 3000;

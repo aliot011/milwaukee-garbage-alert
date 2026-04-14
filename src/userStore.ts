@@ -23,6 +23,8 @@ interface SubscriptionRow {
   consent_source_url: string;
   consent_submitted_at: Date;
   consent_confirmed_at: Date | null;
+  notify_hour: number;
+  awaiting_time_pref: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -72,6 +74,8 @@ function mapSubscription(row: SubscriptionRow): Subscription {
         ? new Date(row.consent_confirmed_at)
         : null,
     },
+    notifyHour: row.notify_hour ?? 19,
+    awaitingTimePref: row.awaiting_time_pref ?? false,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -87,6 +91,8 @@ function mapSubscriber(row: SubscriberRow): Subscriber {
     status: subscription.status,
     verified: subscription.verified,
     consent: subscription.consent,
+    notifyHour: subscription.notifyHour,
+    awaitingTimePref: subscription.awaitingTimePref,
     createdAt: subscription.createdAt,
     updatedAt: subscription.updatedAt,
   };
@@ -124,12 +130,14 @@ export async function createSubscription(
       id, user_id, laddr, sdir, sname, stype, faddr,
       status, verified,
       consent_checked, consent_source_url, consent_submitted_at, consent_confirmed_at,
+      notify_hour, awaiting_time_pref,
       created_at, updated_at
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7,
       $8, $9,
       $10, $11, $12, $13,
-      $14, $15
+      $14, $15,
+      $16, $17
     )
     RETURNING *`,
     [
@@ -146,6 +154,8 @@ export async function createSubscription(
       subscription.consent.sourceUrl,
       subscription.consent.submittedAt,
       subscription.consent.confirmedAt ?? null,
+      subscription.notifyHour ?? 19,
+      subscription.awaitingTimePref ?? false,
       subscription.createdAt,
       subscription.updatedAt,
     ]
@@ -163,12 +173,14 @@ export async function upsertSubscriptionForSignup(
       id, user_id, laddr, sdir, sname, stype, faddr,
       status, verified,
       consent_checked, consent_source_url, consent_submitted_at, consent_confirmed_at,
+      notify_hour, awaiting_time_pref,
       created_at, updated_at
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7,
       $8, $9,
       $10, $11, $12, $13,
-      $14, $15
+      $14, $15,
+      $16, $17
     )
     ON CONFLICT (user_id, laddr, sdir, sname, stype, faddr)
     DO UPDATE SET
@@ -194,6 +206,8 @@ export async function upsertSubscriptionForSignup(
       subscription.consent.sourceUrl,
       subscription.consent.submittedAt,
       subscription.consent.confirmedAt ?? null,
+      subscription.notifyHour ?? 19,
+      subscription.awaitingTimePref ?? false,
       subscription.createdAt,
       subscription.updatedAt,
     ]
@@ -292,7 +306,9 @@ export async function updateSubscription(
          consent_source_url = $5,
          consent_submitted_at = $6,
          consent_confirmed_at = $7,
-         updated_at = $8
+         notify_hour = $8,
+         awaiting_time_pref = $9,
+         updated_at = $10
      WHERE id = $1
      RETURNING *`,
     [
@@ -303,6 +319,8 @@ export async function updateSubscription(
       subscription.consent.sourceUrl,
       subscription.consent.submittedAt,
       subscription.consent.confirmedAt ?? null,
+      subscription.notifyHour ?? 19,
+      subscription.awaitingTimePref ?? false,
       subscription.updatedAt,
     ]
   );
@@ -310,13 +328,15 @@ export async function updateSubscription(
   return mapSubscription(result.rows[0]);
 }
 
-export async function getActiveSubscribers(): Promise<Subscriber[]> {
+export async function getActiveSubscribersForHour(hour: number): Promise<Subscriber[]> {
   const result = await pool.query<SubscriberRow>(
     `SELECT s.*, u.phone
      FROM subscriptions s
      JOIN users u ON u.id = s.user_id
      WHERE s.status = 'active'
-       AND s.verified = true`
+       AND s.verified = true
+       AND s.notify_hour = $1`,
+    [hour]
   );
 
   return result.rows.map(mapSubscriber);
