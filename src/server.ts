@@ -192,7 +192,7 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-app.get("/verify-email", async (req, res) => {
+app.get("/api/verify-email", async (req, res) => {
   const token = String(req.query.token || "").trim();
 
   if (!token) {

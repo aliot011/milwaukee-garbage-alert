@@ -17,6 +17,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/signup': 'http://localhost:3000',
+      '/api': 'http://localhost:3000',
       '/sms': 'http://localhost:3000',
       '/health': 'http://localhost:3000',
     },
