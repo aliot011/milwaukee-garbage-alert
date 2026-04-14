@@ -5,6 +5,10 @@ import { Subscriber, Subscription, User, UserStatus } from "./models";
 interface UserRow {
   id: string;
   phone: string;
+  email: string | null;
+  email_verified: boolean;
+  email_verification_token: string | null;
+  email_verification_token_expires_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -54,6 +58,12 @@ function mapUser(row: UserRow): User {
   return {
     id: row.id,
     phone: row.phone,
+    email: row.email ?? null,
+    emailVerified: row.email_verified ?? false,
+    emailVerificationToken: row.email_verification_token ?? null,
+    emailVerificationTokenExpiresAt: row.email_verification_token_expires_at
+      ? new Date(row.email_verification_token_expires_at)
+      : null,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -100,7 +110,7 @@ function mapSubscriber(row: SubscriberRow): Subscriber {
 
 export async function findUserByPhone(phone: string): Promise<User | null> {
   const result = await pool.query<UserRow>(
-    `SELECT id, phone, created_at, updated_at
+    `SELECT id, phone, email, email_verified, email_verification_token, email_verification_token_expires_at, created_at, updated_at
      FROM users
      WHERE phone = $1
      LIMIT 1`,
@@ -112,13 +122,60 @@ export async function findUserByPhone(phone: string): Promise<User | null> {
 
 export async function createUser(user: User): Promise<User> {
   const result = await pool.query<UserRow>(
-    `INSERT INTO users (id, phone, created_at, updated_at)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, phone, created_at, updated_at`,
-    [user.id, user.phone, user.createdAt, user.updatedAt]
+    `INSERT INTO users (id, phone, email, email_verified, email_verification_token, email_verification_token_expires_at, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING id, phone, email, email_verified, email_verification_token, email_verification_token_expires_at, created_at, updated_at`,
+    [
+      user.id,
+      user.phone,
+      user.email ?? null,
+      user.emailVerified ?? false,
+      user.emailVerificationToken ?? null,
+      user.emailVerificationTokenExpiresAt ?? null,
+      user.createdAt,
+      user.updatedAt,
+    ]
   );
 
   return mapUser(result.rows[0]);
+}
+
+export async function findUserByVerificationToken(token: string): Promise<User | null> {
+  const result = await pool.query<UserRow>(
+    `SELECT id, phone, email, email_verified, email_verification_token, email_verification_token_expires_at, created_at, updated_at
+     FROM users
+     WHERE email_verification_token = $1
+     LIMIT 1`,
+    [token]
+  );
+  return result.rows[0] ? mapUser(result.rows[0]) : null;
+}
+
+export async function verifyUserEmail(userId: string): Promise<void> {
+  await pool.query(
+    `UPDATE users
+     SET email_verified = TRUE,
+         email_verification_token = NULL,
+         email_verification_token_expires_at = NULL,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [userId]
+  );
+}
+
+export async function setEmailVerificationToken(
+  userId: string,
+  token: string,
+  expiresAt: Date
+): Promise<void> {
+  await pool.query(
+    `UPDATE users
+     SET email_verification_token = $1,
+         email_verification_token_expires_at = $2,
+         updated_at = NOW()
+     WHERE id = $3`,
+    [token, expiresAt, userId]
+  );
 }
 
 export async function createSubscription(

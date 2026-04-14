@@ -11,10 +11,14 @@ import {
   findSubscriptionByPhoneAndAddress,
   findSubscriptionsByPhone,
   findUserByPhone,
+  findUserByVerificationToken,
+  setEmailVerificationToken,
   updateSubscription,
   upsertSubscriptionForSignup,
+  verifyUserEmail,
 } from "./userStore";
 import { sendSms } from "./smsService";
+import { sendVerificationEmail } from "./emailService";
 import { parseTimeToHour, formatHour } from "./parseTime";
 
 import dayjs from "dayjs";
@@ -188,10 +192,33 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
+app.get("/verify-email", async (req, res) => {
+  const token = String(req.query.token || "").trim();
+
+  if (!token) {
+    return res.status(400).json({ error: "Missing token." });
+  }
+
+  const user = await findUserByVerificationToken(token);
+
+  if (!user) {
+    return res.status(400).json({ error: "Invalid or expired verification link." });
+  }
+
+  if (user.emailVerificationTokenExpiresAt && user.emailVerificationTokenExpiresAt < new Date()) {
+    return res.status(400).json({ error: "This verification link has expired. Please sign up again to get a new one." });
+  }
+
+  await verifyUserEmail(user.id);
+
+  return res.status(200).json({ message: "Email verified! You're all set." });
+});
+
 app.post("/signup", async (req, res) => {
   try {
     const {
       phone,
+      email,
       laddr,
       sdir,
       sname,
@@ -201,8 +228,12 @@ app.post("/signup", async (req, res) => {
       consent_source,
     } = req.body;
 
-    if (!phone || !laddr || !sname || !stype || !faddr) {
+    if (!phone || !email || !laddr || !sdir || !sname || !stype || !faddr) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+      return res.status(400).json({ error: "Invalid email address." });
     }
 
     if (!consent_source) {
@@ -275,13 +306,29 @@ app.post("/signup", async (req, res) => {
     const now = new Date();
 
     let user: User | null = await findUserByPhone(normalizedPhone);
+    const normalizedEmail = String(email).trim();
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationTokenExpiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
     if (!user) {
       user = await createUser({
         id: crypto.randomUUID(),
         phone: normalizedPhone,
+        email: normalizedEmail,
+        emailVerified: false,
+        emailVerificationToken: verificationToken,
+        emailVerificationTokenExpiresAt: verificationTokenExpiresAt,
         createdAt: now,
         updatedAt: now,
       });
+    } else {
+      await setEmailVerificationToken(user.id, verificationToken, verificationTokenExpiresAt);
+    }
+
+    try {
+      await sendVerificationEmail(normalizedEmail, verificationToken);
+    } catch (err) {
+      console.error("[/signup] Failed to send verification email:", err);
     }
 
     const autoOptIn = sms_consent === true;

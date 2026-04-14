@@ -3,6 +3,7 @@ import { STREET_NAMES, STREET_TYPES } from "@/addressOptions";
 
 export default function SignupForm() {
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [laddr, setLaddr] = useState("");
   const [sdir, setSdir] = useState("");
   const [sname, setSname] = useState("");
@@ -13,8 +14,9 @@ export default function SignupForm() {
   const [loading, setLoading] = useState(false);
 
   const phoneDigits = phone.replace(/\D/g, "");
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isValid =
-    phoneDigits.length === 10 && !!laddr.trim() && !!sname && !!stype && termsChecked;
+    phoneDigits.length === 10 && emailValid && !!laddr.trim() && !!sdir && !!sname && !!stype && termsChecked;
 
   function formatPhone(raw: string) {
     let digits = raw.replace(/\D/g, "").slice(0, 10);
@@ -44,6 +46,7 @@ export default function SignupForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: "+1" + phoneDigits,
+          email: email.trim(),
           laddr: laddr.trim(),
           sdir,
           sname,
@@ -62,6 +65,7 @@ export default function SignupForm() {
           text: "Got it! You have been signed up for Milwaukee Garbage Alerts.",
         });
         setPhone("");
+        setEmail("");
         setLaddr("");
         setSdir("");
         setSname("");
@@ -86,7 +90,7 @@ export default function SignupForm() {
       {/* Phone */}
       <div className="space-y-1">
         <label className="block text-sm font-semibold text-foreground">
-          Mobile phone number
+          Mobile phone number <span className="text-red-500">*</span>
         </label>
         <div className="flex items-center border border-input rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
           <span className="px-3 py-2 bg-muted text-muted-foreground text-sm border-r border-input whitespace-nowrap">
@@ -105,10 +109,26 @@ export default function SignupForm() {
         <p className="text-xs text-muted-foreground">US number, 10 digits.</p>
       </div>
 
+      {/* Email */}
+      <div className="space-y-1">
+        <label className="block text-sm font-semibold text-foreground">
+          Email address <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          className="w-full px-3 py-2 text-sm border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring"
+          autoComplete="email"
+          required
+        />
+      </div>
+
       {/* Address */}
       <div className="space-y-1">
         <label className="block text-sm font-semibold text-foreground">
-          Address (Milwaukee)
+          Address (Milwaukee) <span className="text-red-500">*</span>
         </label>
         <div className="grid grid-cols-[2fr_1fr_3fr_1.5fr] gap-1.5">
           <input
@@ -123,8 +143,9 @@ export default function SignupForm() {
             value={sdir}
             onChange={(e) => setSdir(e.target.value)}
             className="min-w-0 w-full px-1 py-2 text-sm border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-white"
+            required
           >
-            <option value="">–</option>
+            <option value="" disabled>–</option>
             <option value="N">N</option>
             <option value="S">S</option>
             <option value="E">E</option>

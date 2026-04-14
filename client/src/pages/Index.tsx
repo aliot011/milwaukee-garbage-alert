@@ -27,6 +27,9 @@ const Index = () => (
             <Recycle className="w-5 h-5" />
             <span>Free &middot; Up to 4 texts/month &middot; Cancel anytime</span>
           </div>
+          <p className="text-sm opacity-75 mt-2">
+            🚧 This service is currently under construction. Sign up now and you'll receive a notification when it goes live.
+          </p>
         </div>
 
         {/* Right — form card */}

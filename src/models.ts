@@ -13,6 +13,10 @@ export interface ConsentLog {
 export interface User {
   id: string;
   phone: string;
+  email: string | null;
+  emailVerified: boolean;
+  emailVerificationToken: string | null;
+  emailVerificationTokenExpiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
