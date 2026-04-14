@@ -58,7 +58,7 @@ export async function sendPickupAlertForSubscriber(
   if (subscriber.smsAlerts) {
     const message = `MKE Garbage Pickup Alerts: Reminder — ${services.join(
       " & "
-    )} pickup is ${pickupDay} for ${upperAddr}. Carts out by 7:00 AM. Reply STOP to unsubscribe, HELP for help.`;
+    )} pickup is ${pickupDay} for ${upperAddr}. Carts out by 7:00 AM. Text STATUS for pickup dates or a time (e.g. 7PM) to change your reminder. Reply STOP to unsubscribe.`;
     console.log("Sending SMS to", subscriber.phone, ":", message);
     await sendSms(subscriber.phone, message);
   }

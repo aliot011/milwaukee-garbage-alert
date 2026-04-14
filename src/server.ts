@@ -169,7 +169,7 @@ async function buildNextPickupMessage(
     return `${PROGRAM_NAME}: You're already subscribed for ${address}. Next: ${nextPickups}. Reply STOP to unsubscribe or STATUS for next dates.`;
   }
 
-  return `${PROGRAM_NAME}: Next pickups for ${address}: ${nextPickups}. Reply STOP to unsubscribe, HELP for help.`;
+  return `${PROGRAM_NAME}: Next pickups for ${address}: ${nextPickups}. Text STATUS anytime for pickup dates. Text a time (e.g. 7PM) to change your reminder hour. Reply STOP to unsubscribe.`;
 }
 
 function buildConfirmationMessage(address: string): string {
@@ -447,21 +447,23 @@ app.post("/sms/inbound", async (req, res) => {
 
   const address = formatAddress(subscriber.address);
 
-  // Time preference reply
-  if (subscriber.awaitingTimePref && !STOP_KEYWORDS.has(body) && !HELP_KEYWORDS.has(body)) {
-    const hour = parseTimeToHour(body);
-    if (hour !== null) {
-      await updateSubscription({
-        ...toSubscription(subscriber),
-        notifyHour: hour,
-        awaitingTimePref: false,
-        updatedAt: new Date(),
-      });
-      const msg = `${PROGRAM_NAME}: Got it! You'll receive your reminders at ${formatHour(hour)} CT. Reply STOP to unsubscribe, HELP for help.`;
-      await sendSms(subscriber.phone, msg);
-      return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
+  // Time preference reply — works anytime for active subscribers, or when explicitly awaiting
+  if (!STOP_KEYWORDS.has(body) && !HELP_KEYWORDS.has(body) && body !== "START" && !YES_KEYWORDS.has(body) && !STATUS_KEYWORDS.has(body)) {
+    const isActiveVerified = subscriber.status === "active" && subscriber.verified;
+    if (subscriber.awaitingTimePref || isActiveVerified) {
+      const hour = parseTimeToHour(body);
+      if (hour !== null) {
+        await updateSubscription({
+          ...toSubscription(subscriber),
+          notifyHour: hour,
+          awaitingTimePref: false,
+          updatedAt: new Date(),
+        });
+        const msg = `${PROGRAM_NAME}: Got it! You'll receive your reminders at ${formatHour(hour)} CT. Reply STOP to unsubscribe, HELP for help.`;
+        await sendSms(subscriber.phone, msg);
+        return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
+      }
     }
-    // Unparseable reply — let it fall through to normal keyword handling
   }
 
   if (STOP_KEYWORDS.has(body)) {
