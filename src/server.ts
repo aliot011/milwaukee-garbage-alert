@@ -8,6 +8,7 @@ import { Subscriber, Subscription, User } from "./models";
 import {
   createSubscription,
   createUser,
+  disableEmailAlertsForUser,
   findSubscriptionByPhoneAndAddress,
   findSubscriptionsByPhone,
   findUserByPhone,
@@ -18,7 +19,7 @@ import {
   verifyUserEmail,
 } from "./userStore";
 import { sendSms } from "./smsService";
-import { sendVerificationEmail } from "./emailService";
+import { sendVerificationEmail, verifyUnsubscribeToken } from "./emailService";
 import { parseTimeToHour, formatHour } from "./parseTime";
 
 import dayjs from "dayjs";
@@ -216,6 +217,29 @@ app.get("/api/verify-email", async (req, res) => {
   return res.status(200).json({ message: "Email verified! You're all set." });
 });
 
+app.get("/api/unsubscribe-email", async (req, res) => {
+  const uid = String(req.query.uid || "").trim();
+  const token = String(req.query.token || "").trim();
+
+  if (!uid || !token) {
+    return res.status(400).json({ error: "Invalid unsubscribe link." });
+  }
+
+  let valid = false;
+  try {
+    valid = verifyUnsubscribeToken(uid, token);
+  } catch {
+    valid = false;
+  }
+
+  if (!valid) {
+    return res.status(400).json({ error: "Invalid unsubscribe link." });
+  }
+
+  await disableEmailAlertsForUser(uid);
+  return res.status(200).json({ message: "You have been unsubscribed from email alerts." });
+});
+
 app.post("/signup", async (req, res) => {
   try {
     const {
@@ -330,7 +354,7 @@ app.post("/signup", async (req, res) => {
     }
 
     try {
-      await sendVerificationEmail(normalizedEmail, verificationToken);
+      await sendVerificationEmail(normalizedEmail, user.id, verificationToken);
     } catch (err) {
       console.error("[/signup] Failed to send verification email:", err);
     }

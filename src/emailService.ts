@@ -1,4 +1,5 @@
 import sgMail from "@sendgrid/mail";
+import crypto from "crypto";
 
 function getEnv(name: string): string {
   const value = process.env[name];
@@ -13,8 +14,24 @@ const APP_BASE_URL = process.env.APP_BASE_URL || "https://milwaukeegarbagealert.
 const VERIFICATION_TEMPLATE_ID = "d-8d9c237cb4364cba9172da261d86a8e3";
 const PICKUP_REMINDER_TEMPLATE_ID = "d-a5def9730bac4f7391a2fab5af28e44c";
 
+export function generateUnsubscribeToken(userId: string): string {
+  const secret = getEnv("EMAIL_UNSUBSCRIBE_SECRET");
+  return crypto.createHmac("sha256", secret).update(userId).digest("hex");
+}
+
+export function verifyUnsubscribeToken(userId: string, token: string): boolean {
+  const expected = generateUnsubscribeToken(userId);
+  return crypto.timingSafeEqual(Buffer.from(token, "hex"), Buffer.from(expected, "hex"));
+}
+
+function buildUnsubscribeUrl(userId: string): string {
+  const token = generateUnsubscribeToken(userId);
+  return `${APP_BASE_URL}/unsubscribe-email?uid=${userId}&token=${token}`;
+}
+
 export async function sendPickupAlertEmail(
   to: string,
+  userId: string,
   address: string,
   services: string[],
   pickupDay: string
@@ -27,11 +44,12 @@ export async function sendPickupAlertEmail(
       address,
       services: services.join(" & "),
       pickup_day: pickupDay,
+      unsubscribe_url: buildUnsubscribeUrl(userId),
     },
   });
 }
 
-export async function sendVerificationEmail(to: string, token: string): Promise<void> {
+export async function sendVerificationEmail(to: string, userId: string, token: string): Promise<void> {
   const verifyUrl = `${APP_BASE_URL}/verify-email?token=${token}`;
 
   await sgMail.send({
@@ -40,6 +58,7 @@ export async function sendVerificationEmail(to: string, token: string): Promise<
     templateId: VERIFICATION_TEMPLATE_ID,
     dynamicTemplateData: {
       verify_url: verifyUrl,
+      unsubscribe_url: buildUnsubscribeUrl(userId),
     },
   });
 }

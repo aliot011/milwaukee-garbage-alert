@@ -409,6 +409,13 @@ export async function updateSubscription(
   return mapSubscription(result.rows[0]);
 }
 
+export async function disableEmailAlertsForUser(userId: string): Promise<void> {
+  await pool.query(
+    `UPDATE subscriptions SET email_alerts = FALSE, updated_at = NOW() WHERE user_id = $1`,
+    [userId]
+  );
+}
+
 export async function getActiveSubscribersForHour(hour: number): Promise<Subscriber[]> {
   const result = await pool.query<SubscriberRow>(
     `SELECT s.*, u.phone, u.email, u.email_verified

@@ -65,6 +65,6 @@ export async function sendPickupAlertForSubscriber(
 
   if (subscriber.emailAlerts && subscriber.email && subscriber.emailVerified) {
     console.log("Sending email alert to", subscriber.email);
-    await sendPickupAlertEmail(subscriber.email, upperAddr, services, pickupDay);
+    await sendPickupAlertEmail(subscriber.email, subscriber.userId, upperAddr, services, pickupDay);
   }
 }

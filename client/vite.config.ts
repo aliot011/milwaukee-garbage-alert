@@ -18,6 +18,7 @@ export default defineConfig({
     proxy: {
       '/signup': 'http://localhost:3000',
       '/api': 'http://localhost:3000',
+      '/unsubscribe-email': 'http://localhost:3000',
       '/sms': 'http://localhost:3000',
       '/health': 'http://localhost:3000',
     },

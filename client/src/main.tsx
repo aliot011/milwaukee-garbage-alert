@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import VerifyEmail from "./pages/VerifyEmail";
+import UnsubscribeEmail from "./pages/UnsubscribeEmail";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -19,6 +20,7 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/unsubscribe-email" element={<UnsubscribeEmail />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>
