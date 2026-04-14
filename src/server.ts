@@ -17,6 +17,11 @@ import {
   updateSubscription,
   upsertSubscriptionForSignup,
   verifyUserEmail,
+  getAllSubscribers,
+  adminUpdateSubscription,
+  adminUpdateUser,
+  deleteSubscription,
+  deleteUser,
 } from "./userStore";
 import { sendSms } from "./smsService";
 import { sendVerificationEmail, verifyUnsubscribeToken } from "./emailService";
@@ -629,6 +634,92 @@ app.post("/sms/inbound", async (req, res) => {
   }
 
   return res.status(200).type("text/xml").send("<Response></Response>");
+});
+
+// ─── Admin API ───────────────────────────────────────────────────────────────
+
+const adminTokens = new Set<string>();
+
+function adminAuth(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+): void {
+  const auth = req.headers.authorization || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  if (!token || !adminTokens.has(token)) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  next();
+}
+
+app.post("/api/admin/login", (req, res) => {
+  const { password } = req.body as { password?: string };
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) {
+    return res.status(500).json({ error: "Admin not configured" });
+  }
+  if (!password || password !== adminPassword) {
+    return res.status(401).json({ error: "Invalid password" });
+  }
+  const token = crypto.randomUUID();
+  adminTokens.add(token);
+  return res.json({ token });
+});
+
+app.get("/api/admin/subscribers", adminAuth, async (_req, res) => {
+  const subscribers = await getAllSubscribers();
+  return res.json(subscribers);
+});
+
+app.patch("/api/admin/subscribers/:id", adminAuth, async (req, res) => {
+  const { id } = req.params;
+  const { userId, phone, email, emailVerified, status, verified, notifyHour, awaitingTimePref, emailAlerts, smsAlerts } = req.body as Record<string, unknown>;
+
+  try {
+    await adminUpdateSubscription(id, {
+      status: typeof status === "string" ? status : undefined,
+      verified: typeof verified === "boolean" ? verified : undefined,
+      notifyHour: typeof notifyHour === "number" ? notifyHour : undefined,
+      awaitingTimePref: typeof awaitingTimePref === "boolean" ? awaitingTimePref : undefined,
+      emailAlerts: typeof emailAlerts === "boolean" ? emailAlerts : undefined,
+      smsAlerts: typeof smsAlerts === "boolean" ? smsAlerts : undefined,
+    });
+
+    if (typeof userId === "string") {
+      await adminUpdateUser(userId, {
+        phone: typeof phone === "string" ? phone : undefined,
+        email: typeof email === "string" ? email : undefined,
+        emailVerified: typeof emailVerified === "boolean" ? emailVerified : undefined,
+      });
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("Admin update error:", err);
+    return res.status(500).json({ error: "Update failed" });
+  }
+});
+
+app.delete("/api/admin/subscribers/:id", adminAuth, async (req, res) => {
+  try {
+    await deleteSubscription(req.params.id);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("Admin delete subscription error:", err);
+    return res.status(500).json({ error: "Delete failed" });
+  }
+});
+
+app.delete("/api/admin/users/:id", adminAuth, async (req, res) => {
+  try {
+    await deleteUser(req.params.id);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("Admin delete user error:", err);
+    return res.status(500).json({ error: "Delete failed" });
+  }
 });
 
 // SPA fallback — serve index.html for all non-API routes

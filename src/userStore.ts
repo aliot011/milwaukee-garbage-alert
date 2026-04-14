@@ -416,6 +416,78 @@ export async function disableEmailAlertsForUser(userId: string): Promise<void> {
   );
 }
 
+export async function getAllSubscribers(): Promise<Subscriber[]> {
+  const result = await pool.query<SubscriberRow>(
+    `SELECT s.*, u.phone, u.email, u.email_verified
+     FROM subscriptions s
+     JOIN users u ON u.id = s.user_id
+     ORDER BY s.created_at DESC`
+  );
+  return result.rows.map(mapSubscriber);
+}
+
+export async function adminUpdateSubscription(
+  subscriptionId: string,
+  fields: {
+    status?: string;
+    verified?: boolean;
+    notifyHour?: number;
+    awaitingTimePref?: boolean;
+    emailAlerts?: boolean;
+    smsAlerts?: boolean;
+  }
+): Promise<void> {
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (fields.status !== undefined) { sets.push(`status = $${idx++}`); values.push(fields.status); }
+  if (fields.verified !== undefined) { sets.push(`verified = $${idx++}`); values.push(fields.verified); }
+  if (fields.notifyHour !== undefined) { sets.push(`notify_hour = $${idx++}`); values.push(fields.notifyHour); }
+  if (fields.awaitingTimePref !== undefined) { sets.push(`awaiting_time_pref = $${idx++}`); values.push(fields.awaitingTimePref); }
+  if (fields.emailAlerts !== undefined) { sets.push(`email_alerts = $${idx++}`); values.push(fields.emailAlerts); }
+  if (fields.smsAlerts !== undefined) { sets.push(`sms_alerts = $${idx++}`); values.push(fields.smsAlerts); }
+
+  if (sets.length === 0) return;
+  sets.push(`updated_at = NOW()`);
+  values.push(subscriptionId);
+
+  await pool.query(
+    `UPDATE subscriptions SET ${sets.join(", ")} WHERE id = $${idx}`,
+    values
+  );
+}
+
+export async function adminUpdateUser(
+  userId: string,
+  fields: { phone?: string; email?: string; emailVerified?: boolean }
+): Promise<void> {
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (fields.phone !== undefined) { sets.push(`phone = $${idx++}`); values.push(fields.phone); }
+  if (fields.email !== undefined) { sets.push(`email = $${idx++}`); values.push(fields.email); }
+  if (fields.emailVerified !== undefined) { sets.push(`email_verified = $${idx++}`); values.push(fields.emailVerified); }
+
+  if (sets.length === 0) return;
+  sets.push(`updated_at = NOW()`);
+  values.push(userId);
+
+  await pool.query(
+    `UPDATE users SET ${sets.join(", ")} WHERE id = $${idx}`,
+    values
+  );
+}
+
+export async function deleteSubscription(subscriptionId: string): Promise<void> {
+  await pool.query(`DELETE FROM subscriptions WHERE id = $1`, [subscriptionId]);
+}
+
+export async function deleteUser(userId: string): Promise<void> {
+  await pool.query(`DELETE FROM users WHERE id = $1`, [userId]);
+}
+
 export async function getActiveSubscribersForHour(hour: number): Promise<Subscriber[]> {
   const result = await pool.query<SubscriberRow>(
     `SELECT s.*, u.phone, u.email, u.email_verified
