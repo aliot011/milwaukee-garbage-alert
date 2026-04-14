@@ -1,5 +1,5 @@
 // src/smsService.ts
-import axios from "axios";
+import twilio from "twilio";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -10,12 +10,13 @@ function getEnv(name: string): string {
   return value;
 }
 
-const zapierWebhookUrl = getEnv("ZAPIER_WEBHOOK_URL");
+const client = twilio(getEnv("TWILIO_ACCOUNT_SID"), getEnv("TWILIO_AUTH_TOKEN"));
+const fromNumber = getEnv("TWILIO_PHONE_NUMBER");
 
-/**
- * For now: always send SMS via Zapier. Later: replace this with Twilio.
- */
 export async function sendSms(phone: string, message: string): Promise<void> {
-  // Zapier SMS is tied to your phone number, so `phone` is unused for now.
-  await axios.post(zapierWebhookUrl, { message });
+  await client.messages.create({
+    body: message,
+    from: fromNumber,
+    to: phone,
+  });
 }
