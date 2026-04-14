@@ -8,6 +8,8 @@ export default function SignupForm() {
   const [sdir, setSdir] = useState("");
   const [sname, setSname] = useState("");
   const [stype, setStype] = useState("");
+  const [emailAlerts, setEmailAlerts] = useState(true);
+  const [smsAlerts, setSmsAlerts] = useState(true);
   const [termsChecked, setTermsChecked] = useState(false);
   const [smsOptIn, setSmsOptIn] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -16,7 +18,8 @@ export default function SignupForm() {
   const phoneDigits = phone.replace(/\D/g, "");
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isValid =
-    phoneDigits.length === 10 && emailValid && !!laddr.trim() && !!sdir && !!sname && !!stype && termsChecked;
+    phoneDigits.length === 10 && emailValid && !!laddr.trim() && !!sdir && !!sname && !!stype &&
+    (emailAlerts || smsAlerts) && termsChecked;
 
   function formatPhone(raw: string) {
     let digits = raw.replace(/\D/g, "").slice(0, 10);
@@ -53,6 +56,8 @@ export default function SignupForm() {
           stype,
           faddr,
           sms_consent: smsOptIn,
+          email_alerts: emailAlerts,
+          sms_alerts: smsAlerts,
           consent_source: window.location.href,
         }),
       });
@@ -177,6 +182,34 @@ export default function SignupForm() {
         <p className="text-xs text-muted-foreground">
           Example: <strong>1403 E POTTER AV</strong> → 1403 / E / POTTER / AV.
         </p>
+      </div>
+
+      {/* Alert preferences */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-foreground">
+          How would you like to receive alerts? <span className="text-red-500">*</span>
+        </p>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={emailAlerts}
+            onChange={(e) => setEmailAlerts(e.target.checked)}
+            className="accent-primary"
+          />
+          <span className="text-sm text-muted-foreground">Email alerts</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={smsAlerts}
+            onChange={(e) => setSmsAlerts(e.target.checked)}
+            className="accent-primary"
+          />
+          <span className="text-sm text-muted-foreground">SMS / text alerts</span>
+        </label>
+        {!emailAlerts && !smsAlerts && (
+          <p className="text-xs text-red-500">Please select at least one alert method.</p>
+        )}
       </div>
 
       {/* Terms checkbox */}

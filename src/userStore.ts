@@ -29,12 +29,16 @@ interface SubscriptionRow {
   consent_confirmed_at: Date | null;
   notify_hour: number;
   awaiting_time_pref: boolean;
+  email_alerts: boolean;
+  sms_alerts: boolean;
   created_at: Date;
   updated_at: Date;
 }
 
 interface SubscriberRow extends SubscriptionRow {
   phone: string;
+  email: string | null;
+  email_verified: boolean;
 }
 
 function mapAddress(row: SubscriptionRow): AddressParams {
@@ -86,6 +90,8 @@ function mapSubscription(row: SubscriptionRow): Subscription {
     },
     notifyHour: row.notify_hour ?? 19,
     awaitingTimePref: row.awaiting_time_pref ?? false,
+    emailAlerts: row.email_alerts ?? true,
+    smsAlerts: row.sms_alerts ?? true,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -96,6 +102,8 @@ function mapSubscriber(row: SubscriberRow): Subscriber {
   return {
     userId: row.user_id,
     phone: row.phone,
+    email: row.email ?? null,
+    emailVerified: row.email_verified ?? false,
     subscriptionId: subscription.id,
     address: subscription.address,
     status: subscription.status,
@@ -103,6 +111,8 @@ function mapSubscriber(row: SubscriberRow): Subscriber {
     consent: subscription.consent,
     notifyHour: subscription.notifyHour,
     awaitingTimePref: subscription.awaitingTimePref,
+    emailAlerts: subscription.emailAlerts,
+    smsAlerts: subscription.smsAlerts,
     createdAt: subscription.createdAt,
     updatedAt: subscription.updatedAt,
   };
@@ -188,13 +198,15 @@ export async function createSubscription(
       status, verified,
       consent_checked, consent_source_url, consent_submitted_at, consent_confirmed_at,
       notify_hour, awaiting_time_pref,
+      email_alerts, sms_alerts,
       created_at, updated_at
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7,
       $8, $9,
       $10, $11, $12, $13,
       $14, $15,
-      $16, $17
+      $16, $17,
+      $18, $19
     )
     RETURNING *`,
     [
@@ -213,6 +225,8 @@ export async function createSubscription(
       subscription.consent.confirmedAt ?? null,
       subscription.notifyHour ?? 19,
       subscription.awaitingTimePref ?? false,
+      subscription.emailAlerts ?? true,
+      subscription.smsAlerts ?? true,
       subscription.createdAt,
       subscription.updatedAt,
     ]
@@ -231,13 +245,15 @@ export async function upsertSubscriptionForSignup(
       status, verified,
       consent_checked, consent_source_url, consent_submitted_at, consent_confirmed_at,
       notify_hour, awaiting_time_pref,
+      email_alerts, sms_alerts,
       created_at, updated_at
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7,
       $8, $9,
       $10, $11, $12, $13,
       $14, $15,
-      $16, $17
+      $16, $17,
+      $18, $19
     )
     ON CONFLICT (user_id, laddr, sdir, sname, stype, faddr)
     DO UPDATE SET
@@ -247,6 +263,8 @@ export async function upsertSubscriptionForSignup(
       consent_source_url = EXCLUDED.consent_source_url,
       consent_submitted_at = EXCLUDED.consent_submitted_at,
       consent_confirmed_at = EXCLUDED.consent_confirmed_at,
+      email_alerts = EXCLUDED.email_alerts,
+      sms_alerts = EXCLUDED.sms_alerts,
       updated_at = EXCLUDED.updated_at
     RETURNING *`,
     [
@@ -265,6 +283,8 @@ export async function upsertSubscriptionForSignup(
       subscription.consent.confirmedAt ?? null,
       subscription.notifyHour ?? 19,
       subscription.awaitingTimePref ?? false,
+      subscription.emailAlerts ?? true,
+      subscription.smsAlerts ?? true,
       subscription.createdAt,
       subscription.updatedAt,
     ]
@@ -277,7 +297,7 @@ export async function findActiveSubscriptionByPhone(
   phone: string
 ): Promise<Subscriber | null> {
   const result = await pool.query<SubscriberRow>(
-    `SELECT s.*, u.phone
+    `SELECT s.*, u.phone, u.email, u.email_verified
      FROM subscriptions s
      JOIN users u ON u.id = s.user_id
      WHERE u.phone = $1
@@ -295,7 +315,7 @@ export async function findLatestSubscriptionByPhone(
   phone: string
 ): Promise<Subscriber | null> {
   const result = await pool.query<SubscriberRow>(
-    `SELECT s.*, u.phone
+    `SELECT s.*, u.phone, u.email, u.email_verified
      FROM subscriptions s
      JOIN users u ON u.id = s.user_id
      WHERE u.phone = $1
@@ -311,7 +331,7 @@ export async function findSubscriptionsByPhone(
   phone: string
 ): Promise<Subscriber[]> {
   const result = await pool.query<SubscriberRow>(
-    `SELECT s.*, u.phone
+    `SELECT s.*, u.phone, u.email, u.email_verified
      FROM subscriptions s
      JOIN users u ON u.id = s.user_id
      WHERE u.phone = $1
@@ -328,7 +348,7 @@ export async function findSubscriptionByPhoneAndAddress(
 ): Promise<Subscriber | null> {
   const normalizedAddress = normalizeAddress(address);
   const result = await pool.query<SubscriberRow>(
-    `SELECT s.*, u.phone
+    `SELECT s.*, u.phone, u.email, u.email_verified
      FROM subscriptions s
      JOIN users u ON u.id = s.user_id
      WHERE u.phone = $1
@@ -365,7 +385,9 @@ export async function updateSubscription(
          consent_confirmed_at = $7,
          notify_hour = $8,
          awaiting_time_pref = $9,
-         updated_at = $10
+         email_alerts = $10,
+         sms_alerts = $11,
+         updated_at = $12
      WHERE id = $1
      RETURNING *`,
     [
@@ -378,6 +400,8 @@ export async function updateSubscription(
       subscription.consent.confirmedAt ?? null,
       subscription.notifyHour ?? 19,
       subscription.awaitingTimePref ?? false,
+      subscription.emailAlerts ?? true,
+      subscription.smsAlerts ?? true,
       subscription.updatedAt,
     ]
   );
@@ -387,7 +411,7 @@ export async function updateSubscription(
 
 export async function getActiveSubscribersForHour(hour: number): Promise<Subscriber[]> {
   const result = await pool.query<SubscriberRow>(
-    `SELECT s.*, u.phone
+    `SELECT s.*, u.phone, u.email, u.email_verified
      FROM subscriptions s
      JOIN users u ON u.id = s.user_id
      WHERE s.status = 'active'

@@ -30,6 +30,8 @@ export interface Subscription {
   consent: ConsentLog;
   notifyHour: number;
   awaitingTimePref: boolean;
+  emailAlerts: boolean;
+  smsAlerts: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +39,8 @@ export interface Subscription {
 export interface Subscriber {
   userId: string;
   phone: string;
+  email: string | null;
+  emailVerified: boolean;
   subscriptionId: string;
   address: AddressParams;
   status: UserStatus;
@@ -44,6 +48,8 @@ export interface Subscriber {
   consent: ConsentLog;
   notifyHour: number;
   awaitingTimePref: boolean;
+  emailAlerts: boolean;
+  smsAlerts: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

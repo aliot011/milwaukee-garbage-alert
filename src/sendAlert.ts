@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import { Subscriber } from "./models";
 import { fetchCityResponse, CityPickup } from "./cityClient";
 import { sendSms } from "./smsService";
+import { sendPickupAlertEmail } from "./emailService";
 
 function parseCityDate(raw: string): dayjs.Dayjs | null {
   if (!raw) return null;
@@ -54,10 +55,16 @@ export async function sendPickupAlertForSubscriber(
   const pickupDay = tomorrow.format("dddd, MMMM D, YYYY");
   const upperAddr = subscriber.address.faddr.toUpperCase();
 
-  const message = `MKE Garbage Pickup Alerts: Reminder — ${services.join(
-    " & "
-  )} pickup is ${pickupDay} for ${upperAddr}. Carts out by 7:00 AM. Reply STOP to unsubscribe, HELP for help.`;
+  if (subscriber.smsAlerts) {
+    const message = `MKE Garbage Pickup Alerts: Reminder — ${services.join(
+      " & "
+    )} pickup is ${pickupDay} for ${upperAddr}. Carts out by 7:00 AM. Reply STOP to unsubscribe, HELP for help.`;
+    console.log("Sending SMS to", subscriber.phone, ":", message);
+    await sendSms(subscriber.phone, message);
+  }
 
-  console.log("Sending SMS to", subscriber.phone, ":", message);
-  await sendSms(subscriber.phone, message);
+  if (subscriber.emailAlerts && subscriber.email && subscriber.emailVerified) {
+    console.log("Sending email alert to", subscriber.email);
+    await sendPickupAlertEmail(subscriber.email, upperAddr, services, pickupDay);
+  }
 }

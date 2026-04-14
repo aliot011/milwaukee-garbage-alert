@@ -97,6 +97,8 @@ function toSubscription(subscriber: Subscriber): Subscription {
     consent: subscriber.consent,
     notifyHour: subscriber.notifyHour,
     awaitingTimePref: subscriber.awaitingTimePref,
+    emailAlerts: subscriber.emailAlerts,
+    smsAlerts: subscriber.smsAlerts,
     createdAt: subscriber.createdAt,
     updatedAt: subscriber.updatedAt,
   };
@@ -225,6 +227,8 @@ app.post("/signup", async (req, res) => {
       stype,
       faddr,
       sms_consent,
+      email_alerts,
+      sms_alerts,
       consent_source,
     } = req.body;
 
@@ -347,6 +351,8 @@ app.post("/signup", async (req, res) => {
       },
       notifyHour: existingForAddress?.notifyHour ?? 19,
       awaitingTimePref: false,
+      emailAlerts: email_alerts !== false,
+      smsAlerts: sms_alerts !== false,
       createdAt: existingForAddress?.createdAt ?? now,
       updatedAt: now,
     };
