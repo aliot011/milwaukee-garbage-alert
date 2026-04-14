@@ -24,7 +24,7 @@ import {
   deleteUser,
 } from "./userStore";
 import { sendSms } from "./smsService";
-import { sendVerificationEmail, verifyUnsubscribeToken } from "./emailService";
+import { sendVerificationEmail, verifyUnsubscribeToken, sendErrorAlert } from "./emailService";
 import { parseTimeToHour, formatHour } from "./parseTime";
 
 import dayjs from "dayjs";
