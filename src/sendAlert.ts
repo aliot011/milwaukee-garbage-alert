@@ -1,5 +1,10 @@
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { Subscriber } from "./models";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { fetchCityResponse, CityPickup } from "./cityClient";
 import { sendSms } from "./smsService";
 import { sendPickupAlertEmail } from "./emailService";
@@ -29,7 +34,7 @@ export async function sendPickupAlertForSubscriber(
     return;
   }
 
-  const tomorrow = dayjs().add(1, "day").startOf("day");
+  const tomorrow = dayjs().tz("America/Chicago").add(1, "day").startOf("day");
   const data = await fetchCityResponse(subscriber.address);
 
   if (!data.success) {

@@ -28,6 +28,9 @@ import { sendVerificationEmail, verifyUnsubscribeToken, sendErrorAlert } from ".
 import { parseTimeToHour, formatHour } from "./parseTime";
 
 import dayjs from "dayjs";
+import cron from "node-cron";
+import { getActiveSubscribersForHour } from "./userStore";
+import { sendPickupAlertForSubscriber } from "./sendAlert";
 
 const app = express();
 
@@ -767,3 +770,28 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Onboarding API listening on port ${PORT}`);
 });
+
+// Scheduler — runs in the same process as the web server
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+console.log("Garbage/Recycling reminder scheduler started");
+
+cron.schedule("0 * * * *", async () => {
+  const currentHour = dayjs().tz("America/Chicago").hour();
+  console.log("Running scheduled pickup check at", new Date().toISOString(), "— Chicago hour:", currentHour);
+
+  const subscribers = await getActiveSubscribersForHour(currentHour);
+  console.log("Found", subscribers.length, "active subscribers for hour", currentHour);
+
+  for (const subscriber of subscribers) {
+    try {
+      await sendPickupAlertForSubscriber(subscriber);
+    } catch (err) {
+      console.error("Error sending alert for subscriber:", subscriber.phone, err);
+    }
+  }
+}, { timezone: "America/Chicago" });
