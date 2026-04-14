@@ -729,6 +729,34 @@ app.use((_req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
+// Global Express error handler
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("[server] Unhandled error:", err);
+  sendErrorAlert(
+    `Server error — ${err.message}`,
+    `An unhandled error occurred in the web server.\n\nError: ${err.message}\n\nStack:\n${err.stack ?? "n/a"}`
+  ).catch(() => {});
+  res.status(500).json({ error: "Internal server error" });
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[server] Uncaught exception:", err);
+  sendErrorAlert(
+    `Uncaught exception — ${err.message}`,
+    `An uncaught exception crashed the server process.\n\nError: ${err.message}\n\nStack:\n${err.stack ?? "n/a"}`
+  ).catch(() => {});
+});
+
+process.on("unhandledRejection", (reason) => {
+  const detail = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack ?? "n/a" : "n/a";
+  console.error("[server] Unhandled rejection:", reason);
+  sendErrorAlert(
+    `Unhandled promise rejection — ${detail}`,
+    `An unhandled promise rejection occurred in the web server.\n\nReason: ${detail}\n\nStack:\n${stack}`
+  ).catch(() => {});
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {

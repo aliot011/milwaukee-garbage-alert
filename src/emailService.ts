@@ -36,29 +36,61 @@ export async function sendPickupAlertEmail(
   services: string[],
   pickupDay: string
 ): Promise<void> {
-  await sgMail.send({
-    to,
-    from: FROM_EMAIL,
-    templateId: PICKUP_REMINDER_TEMPLATE_ID,
-    dynamicTemplateData: {
-      address,
-      services: services.join(" & "),
-      pickup_day: pickupDay,
-      unsubscribe_url: buildUnsubscribeUrl(userId),
-    },
-  });
+  try {
+    await sgMail.send({
+      to,
+      from: FROM_EMAIL,
+      templateId: PICKUP_REMINDER_TEMPLATE_ID,
+      dynamicTemplateData: {
+        address,
+        services: services.join(" & "),
+        pickup_day: pickupDay,
+        unsubscribe_url: buildUnsubscribeUrl(userId),
+      },
+    });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    await sendErrorAlert(
+      `SendGrid pickup email failed — ${to}`,
+      `Failed to send pickup alert email to ${to}.\n\nError: ${detail}`
+    );
+    throw err;
+  }
+}
+
+export async function sendErrorAlert(subject: string, body: string): Promise<void> {
+  try {
+    await sgMail.send({
+      to: FROM_EMAIL,
+      from: FROM_EMAIL,
+      subject: `[MKE Garbage Alert] ${subject}`,
+      text: body,
+    });
+  } catch (err) {
+    // Log only — don't recurse
+    console.error("[sendErrorAlert] Failed to send error alert email:", err);
+  }
 }
 
 export async function sendVerificationEmail(to: string, userId: string, token: string): Promise<void> {
   const verifyUrl = `${APP_BASE_URL}/verify-email?token=${token}`;
 
-  await sgMail.send({
-    to,
-    from: FROM_EMAIL,
-    templateId: VERIFICATION_TEMPLATE_ID,
-    dynamicTemplateData: {
-      verify_url: verifyUrl,
-      unsubscribe_url: buildUnsubscribeUrl(userId),
-    },
-  });
+  try {
+    await sgMail.send({
+      to,
+      from: FROM_EMAIL,
+      templateId: VERIFICATION_TEMPLATE_ID,
+      dynamicTemplateData: {
+        verify_url: verifyUrl,
+        unsubscribe_url: buildUnsubscribeUrl(userId),
+      },
+    });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    await sendErrorAlert(
+      `SendGrid verification email failed — ${to}`,
+      `Failed to send verification email to ${to}.\n\nError: ${detail}`
+    );
+    throw err;
+  }
 }
