@@ -364,6 +364,11 @@ app.post("/signup", async (req, res) => {
       console.error("[/signup] Failed to send verification email:", err);
     }
 
+    sendErrorAlert(
+      `New signup — ${normalizedEmail}`,
+      `A new user signed up for MKE Garbage Pickup Alerts.\n\nEmail: ${normalizedEmail}\nPhone: ${normalizedPhone}\nAddress: ${address.faddr}\nSMS alerts: ${sms_alerts !== false}\nEmail alerts: ${email_alerts !== false}`
+    ).catch(() => {});
+
     const autoOptIn = sms_consent === true;
 
     const subscription: Subscription = {
