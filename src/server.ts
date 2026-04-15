@@ -22,6 +22,8 @@ import {
   adminUpdateUser,
   deleteSubscription,
   deleteUser,
+  createMissedPickupReport,
+  getMissedPickupReports,
 } from "./userStore";
 import { sendSms } from "./smsService";
 import { sendVerificationEmail, verifyUnsubscribeToken, sendErrorAlert } from "./emailService";
@@ -52,6 +54,7 @@ const STOP_KEYWORDS = new Set([
 ]);
 const HELP_KEYWORDS = new Set(["HELP", "INFO"]);
 const STATUS_KEYWORDS = new Set(["STATUS"]);
+const MISSED_KEYWORDS = new Set(["MISSED", "NOPICKUP"]);
 const YES_KEYWORDS = new Set(["YES", "Y"]);
 
 function normalizePhone(phone: string): string {
@@ -456,7 +459,7 @@ app.post("/sms/inbound", async (req, res) => {
   const address = formatAddress(subscriber.address);
 
   // Time preference reply — works anytime for active subscribers, or when explicitly awaiting
-  if (!STOP_KEYWORDS.has(body) && !HELP_KEYWORDS.has(body) && body !== "START" && !YES_KEYWORDS.has(body) && !STATUS_KEYWORDS.has(body)) {
+  if (!STOP_KEYWORDS.has(body) && !HELP_KEYWORDS.has(body) && body !== "START" && !YES_KEYWORDS.has(body) && !STATUS_KEYWORDS.has(body) && !MISSED_KEYWORDS.has(body)) {
     const isActiveVerified = subscriber.status === "active" && subscriber.verified;
     if (subscriber.awaitingTimePref || isActiveVerified) {
       const hour = parseTimeToHour(body);
@@ -571,6 +574,21 @@ app.post("/sms/inbound", async (req, res) => {
       .status(200)
       .type("text/xml")
       .send(`<Response><Message>${welcomeMsg}</Message></Response>`);
+  }
+
+  if (MISSED_KEYWORDS.has(body)) {
+    if (subscriber.status === "active" && subscriber.verified) {
+      await createMissedPickupReport(
+        crypto.randomUUID(),
+        subscriber.subscriptionId,
+        subscriber.address.faddr
+      );
+      console.log("Missed pickup report logged for subscription:", subscriber.subscriptionId, subscriber.address.faddr);
+      const msg = `${PROGRAM_NAME}: Thanks for letting us know. Your missed pickup has been logged. For immediate help, contact Milwaukee DPW: (414) 286-2489.`;
+      await sendSms(subscriber.phone, msg);
+      return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
+    }
+    return res.status(200).type("text/xml").send("<Response></Response>");
   }
 
   if (STATUS_KEYWORDS.has(body)) {
@@ -730,6 +748,11 @@ app.delete("/api/admin/users/:id", adminAuth, async (req, res) => {
     console.error("Admin delete user error:", err);
     return res.status(500).json({ error: "Delete failed" });
   }
+});
+
+app.get("/api/admin/missed-pickup-reports", adminAuth, async (_req, res) => {
+  const reports = await getMissedPickupReports();
+  return res.json(reports);
 });
 
 // SPA fallback — serve index.html for all non-API routes

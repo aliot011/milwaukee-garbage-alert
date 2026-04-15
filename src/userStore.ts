@@ -488,6 +488,44 @@ export async function deleteUser(userId: string): Promise<void> {
   await pool.query(`DELETE FROM users WHERE id = $1`, [userId]);
 }
 
+export interface MissedPickupReport {
+  id: string;
+  subscriptionId: string;
+  faddr: string;
+  reportedAt: Date;
+}
+
+export async function createMissedPickupReport(
+  id: string,
+  subscriptionId: string,
+  faddr: string
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO missed_pickup_reports (id, subscription_id, faddr, reported_at)
+     VALUES ($1, $2, $3, NOW())`,
+    [id, subscriptionId, faddr]
+  );
+}
+
+export async function getMissedPickupReports(): Promise<MissedPickupReport[]> {
+  const result = await pool.query<{
+    id: string;
+    subscription_id: string;
+    faddr: string;
+    reported_at: Date;
+  }>(
+    `SELECT id, subscription_id, faddr, reported_at
+     FROM missed_pickup_reports
+     ORDER BY reported_at DESC`
+  );
+  return result.rows.map((r) => ({
+    id: r.id,
+    subscriptionId: r.subscription_id,
+    faddr: r.faddr,
+    reportedAt: new Date(r.reported_at),
+  }));
+}
+
 export async function getActiveSubscribersForHour(hour: number): Promise<Subscriber[]> {
   const result = await pool.query<SubscriberRow>(
     `SELECT s.*, u.phone, u.email, u.email_verified
