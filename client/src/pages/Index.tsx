@@ -28,7 +28,7 @@ const Index = () => (
             <span>Free &middot; Up to 4 texts/month &middot; Cancel anytime</span>
           </div>
           <p className="text-sm opacity-75 mt-2">
-            🚧 This service is currently under construction. Sign up now and you'll receive a notification when it goes live.
+            This service currently only works for City of Milwaukee residents. More jurisdictions to come.
           </p>
         </div>
 
@@ -54,6 +54,7 @@ const Index = () => (
       <p className="text-xs text-muted-foreground max-w-lg mx-auto leading-relaxed">
         Your phone number is only used to send pickup reminders and respond to your commands.
         No mobile information will be shared with third parties/affiliates for marketing or promotional purposes.
+        This is not an official City of Milwaukee service and is not affiliated with the City of Milwaukee.
       </p>
     </section>
 
