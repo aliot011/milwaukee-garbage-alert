@@ -191,7 +191,7 @@ function buildWelcomeMessage(address: string, nextPickups: string | null): strin
 }
 
 function buildHelpMessage(): string {
-  return `${PROGRAM_NAME}: Trash/recycling pickup reminders & schedule updates (up to 4 msgs/month). Msg&data rates may apply. Reply STATUS for next dates. Reply STOP to unsubscribe. Support: support@milwaukeegarbagealert.com`;
+  return `${PROGRAM_NAME}: Trash/recycling pickup reminders & schedule updates (up to 4 msgs/month). Msg&data rates may apply. Reply STATUS for next dates. Reply MISSED if your pickup was skipped. Reply STOP to unsubscribe. Support: support@milwaukeegarbagealert.com`;
 }
 
 function buildStopMessage(address: string): string {
