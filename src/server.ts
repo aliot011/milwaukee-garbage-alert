@@ -471,7 +471,6 @@ app.post("/sms/inbound", async (req, res) => {
           updatedAt: new Date(),
         });
         const msg = `${PROGRAM_NAME}: Got it! You'll receive your reminders at ${formatHour(hour)} CT the night before pickup. Reply STOP to unsubscribe, HELP for help.`;
-        await sendSms(subscriber.phone, msg);
         return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
       }
     }
@@ -485,24 +484,13 @@ app.post("/sms/inbound", async (req, res) => {
       updatedAt: new Date(),
     });
     console.log("Subscription unsubscribed via SMS:", from, updated.id);
-
     const msg = buildStopMessage(address);
-    await sendSms(subscriber.phone, msg);
-
-    return res
-      .status(200)
-      .type("text/xml")
-      .send(`<Response><Message>${msg}</Message></Response>`);
+    return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
   }
 
   if (HELP_KEYWORDS.has(body)) {
     const msg = buildHelpMessage();
-    await sendSms(subscriber.phone, msg);
-
-    return res
-      .status(200)
-      .type("text/xml")
-      .send(`<Response><Message>${msg}</Message></Response>`);
+    return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
   }
 
   if (body === "START") {
@@ -526,12 +514,7 @@ app.post("/sms/inbound", async (req, res) => {
         : subscriber.status === "pending_confirm"
         ? buildPendingReminder(address)
         : buildConfirmationMessage(address);
-    await sendSms(subscriber.phone, msg);
-
-    return res
-      .status(200)
-      .type("text/xml")
-      .send(`<Response><Message>${msg}</Message></Response>`);
+    return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
   }
 
   if (YES_KEYWORDS.has(body)) {
@@ -540,11 +523,7 @@ app.post("/sms/inbound", async (req, res) => {
         subscriber.status === "active"
           ? await buildNextPickupMessage(subscriber, "status")
           : buildConfirmationMessage(address);
-      await sendSms(subscriber.phone, msg);
-      return res
-        .status(200)
-        .type("text/xml")
-        .send(`<Response><Message>${msg}</Message></Response>`);
+      return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
     }
 
     await updateSubscription({
@@ -565,15 +544,12 @@ app.post("/sms/inbound", async (req, res) => {
 
     const nextPickups = await buildNextPickupSummary(confirmedSubscriber);
     const welcomeMsg = buildWelcomeMessage(address, nextPickups);
-    await sendSms(confirmedSubscriber.phone, welcomeMsg);
-
     const timePrompt = `${PROGRAM_NAME}: What time would you like your reminders? Reply with a time like 6PM or 8PM. Default is 7PM if you don't reply.`;
-    await sendSms(confirmedSubscriber.phone, timePrompt);
 
     return res
       .status(200)
       .type("text/xml")
-      .send(`<Response><Message>${welcomeMsg}</Message></Response>`);
+      .send(`<Response><Message>${welcomeMsg}</Message><Message>${timePrompt}</Message></Response>`);
   }
 
   if (MISSED_KEYWORDS.has(body)) {
@@ -585,7 +561,6 @@ app.post("/sms/inbound", async (req, res) => {
       );
       console.log("Missed pickup report logged for subscription:", subscriber.subscriptionId, subscriber.address.faddr);
       const msg = `${PROGRAM_NAME}: Thanks for letting us know. Your missed pickup has been logged. For immediate help, contact Milwaukee DPW: (414) 286-2489.`;
-      await sendSms(subscriber.phone, msg);
       return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
     }
     return res.status(200).type("text/xml").send("<Response></Response>");
@@ -596,25 +571,11 @@ app.post("/sms/inbound", async (req, res) => {
       try {
         const msg = await buildNextPickupMessage(subscriber, "status");
         console.log("Sending next-pickup info to", subscriber.phone, ":", msg);
-        await sendSms(subscriber.phone, msg);
-
-        return res
-          .status(200)
-          .type("text/xml")
-          .send(`<Response><Message>${msg}</Message></Response>`);
+        return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
       } catch (err) {
-        console.error(
-          "Error fetching next pickup info for user:",
-          subscriber.phone,
-          err
-        );
+        console.error("Error fetching next pickup info for user:", subscriber.phone, err);
         const msg = `${PROGRAM_NAME}: Sorry, we couldn't look up your pickup info right now. Please try again later. Reply STOP to unsubscribe, HELP for help.`;
-        await sendSms(subscriber.phone, msg);
-
-        return res
-          .status(200)
-          .type("text/xml")
-          .send(`<Response><Message>${msg}</Message></Response>`);
+        return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
       }
     }
 
@@ -622,43 +583,23 @@ app.post("/sms/inbound", async (req, res) => {
       subscriber.status === "pending_confirm"
         ? buildPendingReminder(address)
         : buildStopMessage(address);
-    await sendSms(subscriber.phone, msg);
-    return res
-      .status(200)
-      .type("text/xml")
-      .send(`<Response><Message>${msg}</Message></Response>`);
+    return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
   }
 
   if (subscriber.status === "active" && subscriber.verified) {
     try {
       const msg = await buildNextPickupMessage(subscriber, "status");
-      await sendSms(subscriber.phone, msg);
-      return res
-        .status(200)
-        .type("text/xml")
-        .send(`<Response><Message>${msg}</Message></Response>`);
+      return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
     } catch (err) {
-      console.error(
-        "Error fetching next pickup info for user:",
-        subscriber.phone,
-        err
-      );
+      console.error("Error fetching next pickup info for user:", subscriber.phone, err);
       const msg = `${PROGRAM_NAME}: Sorry, we couldn't look up your pickup info right now. Please try again later. Reply STOP to unsubscribe, HELP for help.`;
-      await sendSms(subscriber.phone, msg);
-      return res
-        .status(200)
-        .type("text/xml")
-        .send(`<Response><Message>${msg}</Message></Response>`);
+      return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
     }
   }
 
   if (subscriber.status === "pending_confirm") {
     const msg = buildPendingReminder(address);
-    await sendSms(subscriber.phone, msg);
-    return res
-      .status(200)
-      .type("text/xml")
-      .send(`<Response><Message>${msg}</Message></Response>`);
+    return res.status(200).type("text/xml").send(`<Response><Message>${msg}</Message></Response>`);
   }
 
   return res.status(200).type("text/xml").send("<Response></Response>");
