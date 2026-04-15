@@ -49,9 +49,20 @@ function formatHour(h: number) {
   return h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`;
 }
 
+interface MissedPickupReport {
+  id: string;
+  subscriptionId: string;
+  faddr: string;
+  reportedAt: string;
+}
+
+type Tab = "subscribers" | "missed-pickups";
+
 export default function Admin() {
   const navigate = useNavigate();
   const token = localStorage.getItem("admin_token") || "";
+
+  const [tab, setTab] = useState<Tab>("subscribers");
 
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +72,10 @@ export default function Admin() {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ subscriptionId: string; userId: string; label: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const [reports, setReports] = useState<MissedPickupReport[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportsError, setReportsError] = useState("");
 
   const authHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -80,10 +95,30 @@ export default function Admin() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  const loadReports = useCallback(async () => {
+    setReportsLoading(true);
+    setReportsError("");
+    try {
+      const res = await fetch("/api/admin/missed-pickup-reports", { headers: authHeaders });
+      if (res.status === 401) { navigate("/admin/login"); return; }
+      if (!res.ok) throw new Error("Failed to load");
+      setReports(await res.json());
+    } catch {
+      setReportsError("Failed to load missed pickup reports.");
+    } finally {
+      setReportsLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
   useEffect(() => {
     if (!token) { navigate("/admin/login"); return; }
     load();
   }, [token, load, navigate]);
+
+  useEffect(() => {
+    if (tab === "missed-pickups") loadReports();
+  }, [tab, loadReports]);
 
   function openEdit(sub: Subscriber) {
     setEditing(sub);
@@ -171,84 +206,138 @@ export default function Admin() {
         </button>
       </header>
 
+      {/* Tabs */}
+      <div className="border-b border-border px-6">
+        <nav className="flex gap-1">
+          {([ ["subscribers", "Subscribers"], ["missed-pickups", "Missed Pickups"] ] as [Tab, string][]).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                tab === id
+                  ? "border-amber-500 text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
       <main className="p-6">
-        {loading && (
-          <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
-          </div>
+        {/* Subscribers tab */}
+        {tab === "subscribers" && (
+          <>
+            {loading && (
+              <div className="flex justify-center py-16">
+                <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+            {error && <p className="text-red-600 font-medium">{error}</p>}
+            {!loading && !error && (
+              <div className="overflow-x-auto rounded-xl border border-border">
+                <table className="w-full text-sm border-collapse">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      {["Phone","Email","Email Verified","Address","Status","Verified","Notify Hour","Email Alerts","SMS Alerts","Awaiting Time Pref","Consent Source","Subscribed","Updated","Actions"].map((h) => (
+                        <th key={h} className="px-3 py-2.5 text-left font-semibold text-muted-foreground whitespace-nowrap border-b border-border">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {subscribers.map((sub, i) => (
+                      <tr key={sub.subscriptionId} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                        <td className="px-3 py-2 whitespace-nowrap font-mono">{sub.phone}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{sub.email ?? <span className="text-muted-foreground italic">none</span>}</td>
+                        <td className="px-3 py-2 text-center">{sub.emailVerified ? <Check className="w-4 h-4 text-green-600 inline" /> : <X className="w-4 h-4 text-muted-foreground inline" />}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{sub.address.faddr}</td>
+                        <td className="px-3 py-2">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            sub.status === "active" ? "bg-green-100 text-green-800"
+                            : sub.status === "pending_confirm" ? "bg-yellow-100 text-yellow-800"
+                            : "bg-gray-100 text-gray-600"
+                          }`}>
+                            {sub.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center">{sub.verified ? <Check className="w-4 h-4 text-green-600 inline" /> : <X className="w-4 h-4 text-muted-foreground inline" />}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{formatHour(sub.notifyHour)}</td>
+                        <td className="px-3 py-2 text-center">{sub.emailAlerts ? <Check className="w-4 h-4 text-green-600 inline" /> : <X className="w-4 h-4 text-muted-foreground inline" />}</td>
+                        <td className="px-3 py-2 text-center">{sub.smsAlerts ? <Check className="w-4 h-4 text-green-600 inline" /> : <X className="w-4 h-4 text-muted-foreground inline" />}</td>
+                        <td className="px-3 py-2 text-center">{sub.awaitingTimePref ? <Check className="w-4 h-4 text-amber-500 inline" /> : <X className="w-4 h-4 text-muted-foreground inline" />}</td>
+                        <td className="px-3 py-2 max-w-[180px] truncate text-muted-foreground text-xs" title={sub.consent.sourceUrl}>{sub.consent.sourceUrl}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-muted-foreground text-xs">{new Date(sub.createdAt).toLocaleDateString()}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-muted-foreground text-xs">{new Date(sub.updatedAt).toLocaleString()}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => openEdit(sub)} className="p-1.5 rounded-md hover:bg-muted transition-colors" title="Edit">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget({ subscriptionId: sub.subscriptionId, userId: sub.userId, label: sub.address.faddr })}
+                              className="p-1.5 rounded-md hover:bg-red-50 text-red-500 transition-colors"
+                              title="Delete subscription"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {subscribers.length === 0 && (
+                      <tr>
+                        <td colSpan={14} className="px-4 py-8 text-center text-muted-foreground">No subscribers yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
 
-        {error && <p className="text-red-600 font-medium">{error}</p>}
-
-        {!loading && !error && (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full text-sm border-collapse">
-              <thead className="bg-muted/50">
-                <tr>
-                  {["Phone","Email","Email Verified","Address","Status","Verified","Notify Hour","Email Alerts","SMS Alerts","Awaiting Time Pref","Consent Source","Subscribed","Updated","Actions"].map((h) => (
-                    <th key={h} className="px-3 py-2.5 text-left font-semibold text-muted-foreground whitespace-nowrap border-b border-border">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {subscribers.map((sub, i) => (
-                  <tr
-                    key={sub.subscriptionId}
-                    className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}
-                  >
-                    <td className="px-3 py-2 whitespace-nowrap font-mono">{sub.phone}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{sub.email ?? <span className="text-muted-foreground italic">none</span>}</td>
-                    <td className="px-3 py-2 text-center">{sub.emailVerified ? <Check className="w-4 h-4 text-green-600 inline" /> : <X className="w-4 h-4 text-muted-foreground inline" />}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{sub.address.faddr}</td>
-                    <td className="px-3 py-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        sub.status === "active" ? "bg-green-100 text-green-800"
-                        : sub.status === "pending_confirm" ? "bg-yellow-100 text-yellow-800"
-                        : "bg-gray-100 text-gray-600"
-                      }`}>
-                        {sub.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-center">{sub.verified ? <Check className="w-4 h-4 text-green-600 inline" /> : <X className="w-4 h-4 text-muted-foreground inline" />}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{formatHour(sub.notifyHour)}</td>
-                    <td className="px-3 py-2 text-center">{sub.emailAlerts ? <Check className="w-4 h-4 text-green-600 inline" /> : <X className="w-4 h-4 text-muted-foreground inline" />}</td>
-                    <td className="px-3 py-2 text-center">{sub.smsAlerts ? <Check className="w-4 h-4 text-green-600 inline" /> : <X className="w-4 h-4 text-muted-foreground inline" />}</td>
-                    <td className="px-3 py-2 text-center">{sub.awaitingTimePref ? <Check className="w-4 h-4 text-amber-500 inline" /> : <X className="w-4 h-4 text-muted-foreground inline" />}</td>
-                    <td className="px-3 py-2 max-w-[180px] truncate text-muted-foreground text-xs" title={sub.consent.sourceUrl}>{sub.consent.sourceUrl}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-muted-foreground text-xs">{new Date(sub.createdAt).toLocaleDateString()}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-muted-foreground text-xs">{new Date(sub.updatedAt).toLocaleString()}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => openEdit(sub)}
-                          className="p-1.5 rounded-md hover:bg-muted transition-colors"
-                          title="Edit"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget({ subscriptionId: sub.subscriptionId, userId: sub.userId, label: sub.address.faddr })}
-                          className="p-1.5 rounded-md hover:bg-red-50 text-red-500 transition-colors"
-                          title="Delete subscription"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {subscribers.length === 0 && (
-                  <tr>
-                    <td colSpan={14} className="px-4 py-8 text-center text-muted-foreground">
-                      No subscribers yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+        {/* Missed Pickups tab */}
+        {tab === "missed-pickups" && (
+          <>
+            {reportsLoading && (
+              <div className="flex justify-center py-16">
+                <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+            {reportsError && <p className="text-red-600 font-medium">{reportsError}</p>}
+            {!reportsLoading && !reportsError && (
+              <div className="overflow-x-auto rounded-xl border border-border">
+                <table className="w-full text-sm border-collapse">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      {["Address", "Reported At", "Subscription ID"].map((h) => (
+                        <th key={h} className="px-3 py-2.5 text-left font-semibold text-muted-foreground whitespace-nowrap border-b border-border">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reports.map((r, i) => (
+                      <tr key={r.id} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                        <td className="px-3 py-2 whitespace-nowrap font-medium">{r.faddr}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{new Date(r.reportedAt).toLocaleString()}</td>
+                        <td className="px-3 py-2 whitespace-nowrap font-mono text-xs text-muted-foreground">{r.subscriptionId}</td>
+                      </tr>
+                    ))}
+                    {reports.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">No missed pickup reports yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </main>
 
