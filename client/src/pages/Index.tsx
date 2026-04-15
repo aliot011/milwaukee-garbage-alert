@@ -1,4 +1,4 @@
-import { Recycle, Trash2 } from "lucide-react";
+import { Mail, Recycle, Trash2 } from "lucide-react";
 import SignupForm from "@/components/SignupForm";
 import HowItWorks from "@/components/HowItWorks";
 import CommandsSection from "@/components/CommandsSection";
@@ -30,6 +30,28 @@ const Index = () => (
           <p className="text-sm opacity-75 mt-2">
             This service currently only works for City of Milwaukee residents. More jurisdictions to come.
           </p>
+          <div className="flex items-center gap-4">
+            <a
+              href="https://www.instagram.com/milwaukeegarbagealert"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="opacity-75 hover:opacity-100 transition-opacity"
+              aria-label="Instagram"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                <circle cx="12" cy="12" r="4.5"/>
+                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+              </svg>
+            </a>
+            <a
+              href="mailto:support@milwaukeegarbagealert.com"
+              className="opacity-75 hover:opacity-100 transition-opacity"
+              aria-label="Contact"
+            >
+              <Mail className="w-[42px] h-[42px]" />
+            </a>
+          </div>
         </div>
 
         {/* Right — form card */}
