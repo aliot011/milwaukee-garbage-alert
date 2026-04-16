@@ -1,13 +1,18 @@
 const commands = [
   {
-    keyword: "YES",
-    color: "bg-green-100 text-green-800",
-    description: "Confirm alerts — reply YES (or Y) to the first message to activate reminders.",
-  },
-  {
     keyword: "STATUS",
     color: "bg-blue-100 text-blue-800",
     description: "Check your schedule — get your next garbage and recycling pickup dates.",
+  },
+  {
+    keyword: "MISSED",
+    color: "bg-yellow-100 text-yellow-800",
+    description: "Report a missed pickup — reply MISSED (or NOPICKUP) if your garbage or recycling was skipped.",
+  },
+  {
+    keyword: "7PM",
+    color: "bg-purple-100 text-purple-800",
+    description: "Change your reminder time — text any hour (e.g. 7PM or 8AM) to receive alerts at that time the night before pickup.",
   },
   {
     keyword: "HELP",
