@@ -84,8 +84,17 @@ function parseCityDate(raw: string): dayjs.Dayjs | null {
 
 function getActualPickupDate(info?: CityPickup): dayjs.Dayjs | null {
   if (!info) return null;
-  const raw = info.alt_date && info.alt_date.trim() ? info.alt_date : info.date;
-  return parseCityDate(raw);
+  return parseCityDate(info.date);
+}
+
+function getAltPickupDate(info?: CityPickup): dayjs.Dayjs | null {
+  if (!info) return null;
+  const alt = info.alt_date?.trim();
+  if (!alt) return null;
+  const altDate = parseCityDate(alt);
+  const primaryDate = parseCityDate(info.date);
+  if (altDate && primaryDate && altDate.isSame(primaryDate, "day")) return null;
+  return altDate;
 }
 
 function formatAddress(address: AddressParams): string {
@@ -145,6 +154,9 @@ async function buildNextPickupSummary(subscriber: Subscriber): Promise<string | 
   const garbageDate = getActualPickupDate(data.garbage);
   const recyclingDate = getActualPickupDate(data.recycling);
 
+  const garbageAlt = getAltPickupDate(data.garbage);
+  const recyclingAlt = getAltPickupDate(data.recycling);
+
   const parts: string[] = [];
   if (garbageDate) {
     parts.push(`garbage: ${garbageDate.format("dddd, MMMM D, YYYY")}`);
@@ -157,7 +169,20 @@ async function buildNextPickupSummary(subscriber: Subscriber): Promise<string | 
     return null;
   }
 
-  return parts.join(" and ");
+  let altNote = "";
+  if (garbageAlt && recyclingAlt) {
+    if (garbageAlt.isSame(recyclingAlt, "day")) {
+      altNote = ` Note: the city has also indicated a possible alternate pickup date of ${garbageAlt.format("dddd, MMMM D")} — when in doubt, put carts out both days.`;
+    } else {
+      altNote = ` Note: the city has also indicated possible alternate pickup dates of ${garbageAlt.format("dddd, MMMM D")} for garbage and ${recyclingAlt.format("dddd, MMMM D")} for recycling — when in doubt, put carts out both days.`;
+    }
+  } else if (garbageAlt) {
+    altNote = ` Note: the city has also indicated a possible alternate pickup date of ${garbageAlt.format("dddd, MMMM D")} for garbage — when in doubt, put carts out both days.`;
+  } else if (recyclingAlt) {
+    altNote = ` Note: the city has also indicated a possible alternate pickup date of ${recyclingAlt.format("dddd, MMMM D")} for recycling — when in doubt, put carts out both days.`;
+  }
+
+  return parts.join(" and ") + altNote;
 }
 
 async function buildNextPickupMessage(
