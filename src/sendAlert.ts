@@ -22,8 +22,17 @@ function parseCityDate(raw: string): dayjs.Dayjs | null {
 
 function getActualPickupDate(info?: CityPickup): dayjs.Dayjs | null {
   if (!info) return null;
-  const raw = info.alt_date && info.alt_date.trim() ? info.alt_date : info.date;
-  return parseCityDate(raw);
+  return parseCityDate(info.date);
+}
+
+function getAltPickupDate(info?: CityPickup): dayjs.Dayjs | null {
+  if (!info) return null;
+  const alt = info.alt_date?.trim();
+  if (!alt) return null;
+  const altDate = parseCityDate(alt);
+  const primaryDate = parseCityDate(info.date);
+  if (altDate && primaryDate && altDate.isSame(primaryDate, "day")) return null;
+  return altDate;
 }
 
 export async function sendPickupAlertForSubscriber(
@@ -60,16 +69,33 @@ export async function sendPickupAlertForSubscriber(
   const pickupDay = tomorrow.format("dddd, MMMM D, YYYY");
   const upperAddr = subscriber.address.faddr.toUpperCase();
 
+  // Collect any alt dates for services being alerted
+  const garbageAlt = garbageTomorrow ? getAltPickupDate(data.garbage) : null;
+  const recyclingAlt = recyclingTomorrow ? getAltPickupDate(data.recycling) : null;
+
+  let altNote = "";
+  if (garbageAlt && recyclingAlt) {
+    if (garbageAlt.isSame(recyclingAlt, "day")) {
+      altNote = ` Note: the city has also indicated a possible alternate pickup date of ${garbageAlt.format("dddd, MMMM D")} — when in doubt, put carts out both days.`;
+    } else {
+      altNote = ` Note: the city has also indicated possible alternate pickup dates of ${garbageAlt.format("dddd, MMMM D")} for garbage and ${recyclingAlt.format("dddd, MMMM D")} for recycling — when in doubt, put carts out both days.`;
+    }
+  } else if (garbageAlt) {
+    altNote = ` Note: the city has also indicated a possible alternate pickup date of ${garbageAlt.format("dddd, MMMM D")} — when in doubt, put carts out both days.`;
+  } else if (recyclingAlt) {
+    altNote = ` Note: the city has also indicated a possible alternate pickup date of ${recyclingAlt.format("dddd, MMMM D")} — when in doubt, put carts out both days.`;
+  }
+
   if (subscriber.smsAlerts) {
     const message = `MKE Garbage Pickup Alerts: Reminder — ${services.join(
       " & "
-    )} pickup is ${pickupDay} for ${upperAddr}. Carts out by 7:00 AM. Text STATUS for pickup dates or a time (e.g. 7PM) to change your reminder. Reply STOP to unsubscribe.`;
+    )} pickup is ${pickupDay} for ${upperAddr}. Carts out by 7:00 AM.${altNote} Text STATUS for pickup dates or a time (e.g. 7PM) to change your reminder. Reply STOP to unsubscribe.`;
     console.log("Sending SMS to", subscriber.phone, ":", message);
     await sendSms(subscriber.phone, message);
   }
 
   if (subscriber.emailAlerts && subscriber.email && subscriber.emailVerified) {
     console.log("Sending email alert to", subscriber.email);
-    await sendPickupAlertEmail(subscriber.email, subscriber.userId, upperAddr, services, pickupDay);
+    await sendPickupAlertEmail(subscriber.email, subscriber.userId, upperAddr, services, pickupDay, altNote || undefined);
   }
 }

@@ -34,7 +34,8 @@ export async function sendPickupAlertEmail(
   userId: string,
   address: string,
   services: string[],
-  pickupDay: string
+  pickupDay: string,
+  altNote?: string
 ): Promise<void> {
   try {
     await sgMail.send({
@@ -45,6 +46,7 @@ export async function sendPickupAlertEmail(
         address,
         services: services.join(" & "),
         pickup_day: pickupDay,
+        alt_note: altNote || "",
         unsubscribe_url: buildUnsubscribeUrl(userId),
       },
     });
