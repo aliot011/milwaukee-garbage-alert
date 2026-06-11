@@ -1,5 +1,6 @@
 // src/cityClient.ts
 import axios from "axios";
+import https from "https";
 
 export interface AddressParams {
   laddr: string;
@@ -48,7 +49,8 @@ export async function fetchCityResponse(
 
   console.log("[cityClient] calling URL:", url);
 
-  const res = await axios.get(url, { timeout: 5000 });
+  const agent = new https.Agent({ rejectUnauthorized: false });
+  const res = await axios.get(url, { timeout: 5000, httpsAgent: agent });
 
   if (res.status !== 200) {
     throw new Error(`City API returned status ${res.status}`);
