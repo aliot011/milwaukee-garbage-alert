@@ -776,11 +776,23 @@ cron.schedule("0 * * * *", async () => {
   const subscribers = await getActiveSubscribersForHour(currentHour);
   console.log("Found", subscribers.length, "active subscribers for hour", currentHour);
 
+  const failures: { phone: string; error: string }[] = [];
+
   for (const subscriber of subscribers) {
     try {
       await sendPickupAlertForSubscriber(subscriber);
     } catch (err) {
-      console.error("Error sending alert for subscriber:", subscriber.phone, err);
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error("Error sending alert for subscriber:", subscriber.phone, detail);
+      failures.push({ phone: subscriber.phone, error: detail });
     }
+  }
+
+  if (failures.length > 0) {
+    const failList = failures.map((f) => `  ${f.phone}: ${f.error}`).join("\n");
+    await sendErrorAlert(
+      `Cron alert failures: ${failures.length}/${subscribers.length} subscribers failed`,
+      `The scheduled pickup check at Chicago hour ${currentHour} had ${failures.length} failure(s) out of ${subscribers.length} subscriber(s).\n\nFailed subscribers:\n${failList}`
+    );
   }
 }, { timezone: "America/Chicago" });
